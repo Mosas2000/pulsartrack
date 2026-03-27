@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import app from '../app';
 import pool from '../config/database';
@@ -8,6 +8,10 @@ describe('Auction Routes', () => {
     const mockAddress = 'GB7V7Z5K64I6U6I7U6I7U6I7U6I7U6I7U6I7U6I7U6I7U6I7U6I7';
     const otherAddress = 'GD7V7Z5K64I6U6I7U6I7U6I7U6I7U6I7U6I7U6I7U6I7U6I7U6I7';
     const token = generateTestToken(mockAddress);
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
 
     describe('GET /api/auctions', () => {
         it('should return a list of auctions', async () => {
@@ -55,6 +59,24 @@ describe('Auction Routes', () => {
                 amountStroops: 150
             };
 
+            const insertRow = {
+                id: 'bid-uuid',
+                auction_id: 1,
+                bidder: mockAddress,
+                campaign_id: bidData.campaignId,
+                amount_stroops: bidData.amountStroops
+            };
+
+            // Route uses pool.connect() for a transaction — mock the client
+            const mockClient = {
+                query: vi.fn()
+                    .mockResolvedValueOnce({ rows: [] })                  // BEGIN
+                    .mockResolvedValueOnce({ rows: [insertRow] })         // INSERT
+                    .mockResolvedValueOnce({ rows: [], rowCount: 1 })     // UPDATE
+                    .mockResolvedValueOnce({ rows: [] }),                 // COMMIT
+                release: vi.fn(),
+            };
+            (pool.connect as any).mockResolvedValue(mockClient);
             setupClientMock(
                 // Auction lookup
                 { rows: [{ publisher: otherAddress, floor_price_stroops: '100', status: 'Open' }] },
