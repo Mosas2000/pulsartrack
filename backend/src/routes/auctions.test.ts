@@ -35,33 +35,40 @@ describe('Auction Routes', () => {
     });
 
     describe('POST /api/auctions/:id/bid', () => {
+        function setupClientMock(...queryResults: any[]) {
+            const mockClient = {
+                query: vi.fn(),
+                release: vi.fn(),
+            };
+            for (const result of queryResults) {
+                mockClient.query.mockResolvedValueOnce(result);
+            }
+            // Default fallback for BEGIN/COMMIT/ROLLBACK
+            mockClient.query.mockResolvedValue({ rows: [], rowCount: 0 });
+            (pool.connect as any).mockResolvedValue(mockClient);
+            return mockClient;
+        }
+
         it('should submit a bid when authenticated', async () => {
             const bidData = {
                 campaignId: 1,
                 amountStroops: 150
             };
 
-            (pool.query as any)
+            setupClientMock(
                 // Auction lookup
-                .mockResolvedValueOnce({
-                    rows: [{ publisher: otherAddress, floor_price_stroops: '100', status: 'Open' }]
-                })
+                { rows: [{ publisher: otherAddress, floor_price_stroops: '100', status: 'Open' }] },
                 // Campaign ownership check
-                .mockResolvedValueOnce({
-                    rows: [{ advertiser: mockAddress }]
-                })
+                { rows: [{ advertiser: mockAddress }] },
+                // BEGIN
+                { rows: [] },
                 // Insert bid
-                .mockResolvedValueOnce({
-                    rows: [{
-                        id: 'bid-uuid',
-                        auction_id: 1,
-                        bidder: mockAddress,
-                        campaign_id: bidData.campaignId,
-                        amount_stroops: bidData.amountStroops
-                    }]
-                })
+                { rows: [{ id: 'bid-uuid', auction_id: 1, bidder: mockAddress, campaign_id: 1, amount_stroops: 150 }] },
                 // Update bid count
-                .mockResolvedValueOnce({ rows: [] });
+                { rows: [] },
+                // COMMIT
+                { rows: [] },
+            );
 
             const response = await request(app)
                 .post('/api/auctions/1/bid')
@@ -82,7 +89,9 @@ describe('Auction Routes', () => {
         });
 
         it('should return 404 when auction does not exist', async () => {
-            (pool.query as any).mockResolvedValueOnce({ rows: [] });
+            setupClientMock(
+                { rows: [] },
+            );
 
             const response = await request(app)
                 .post('/api/auctions/999/bid')
@@ -94,9 +103,9 @@ describe('Auction Routes', () => {
         });
 
         it('should return 400 when auction is not open', async () => {
-            (pool.query as any).mockResolvedValueOnce({
-                rows: [{ publisher: otherAddress, floor_price_stroops: '100', status: 'Closed' }]
-            });
+            setupClientMock(
+                { rows: [{ publisher: otherAddress, floor_price_stroops: '100', status: 'Closed' }] },
+            );
 
             const response = await request(app)
                 .post('/api/auctions/1/bid')
@@ -108,9 +117,9 @@ describe('Auction Routes', () => {
         });
 
         it('should return 403 when bidding on own auction', async () => {
-            (pool.query as any).mockResolvedValueOnce({
-                rows: [{ publisher: mockAddress, floor_price_stroops: '100', status: 'Open' }]
-            });
+            setupClientMock(
+                { rows: [{ publisher: mockAddress, floor_price_stroops: '100', status: 'Open' }] },
+            );
 
             const response = await request(app)
                 .post('/api/auctions/1/bid')
@@ -122,9 +131,9 @@ describe('Auction Routes', () => {
         });
 
         it('should return 400 when bid is below floor price', async () => {
-            (pool.query as any).mockResolvedValueOnce({
-                rows: [{ publisher: otherAddress, floor_price_stroops: '200', status: 'Open' }]
-            });
+            setupClientMock(
+                { rows: [{ publisher: otherAddress, floor_price_stroops: '200', status: 'Open' }] },
+            );
 
             const response = await request(app)
                 .post('/api/auctions/1/bid')
@@ -136,11 +145,10 @@ describe('Auction Routes', () => {
         });
 
         it('should return 404 when campaign does not exist', async () => {
-            (pool.query as any)
-                .mockResolvedValueOnce({
-                    rows: [{ publisher: otherAddress, floor_price_stroops: '100', status: 'Open' }]
-                })
-                .mockResolvedValueOnce({ rows: [] });
+            setupClientMock(
+                { rows: [{ publisher: otherAddress, floor_price_stroops: '100', status: 'Open' }] },
+                { rows: [] },
+            );
 
             const response = await request(app)
                 .post('/api/auctions/1/bid')
@@ -152,13 +160,10 @@ describe('Auction Routes', () => {
         });
 
         it('should return 403 when campaign belongs to another user', async () => {
-            (pool.query as any)
-                .mockResolvedValueOnce({
-                    rows: [{ publisher: otherAddress, floor_price_stroops: '100', status: 'Open' }]
-                })
-                .mockResolvedValueOnce({
-                    rows: [{ advertiser: otherAddress }]
-                });
+            setupClientMock(
+                { rows: [{ publisher: otherAddress, floor_price_stroops: '100', status: 'Open' }] },
+                { rows: [{ advertiser: otherAddress }] },
+            );
 
             const response = await request(app)
                 .post('/api/auctions/1/bid')
