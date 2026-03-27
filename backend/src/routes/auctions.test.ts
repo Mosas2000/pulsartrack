@@ -59,6 +59,24 @@ describe('Auction Routes', () => {
                 amountStroops: 150
             };
 
+            const client = {
+                query: vi
+                    .fn()
+                    .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+                    .mockResolvedValueOnce({
+                        rows: [{
+                            id: 'bid-uuid',
+                            auction_id: 1,
+                            bidder: mockAddress,
+                            campaign_id: bidData.campaignId,
+                            amount_stroops: bidData.amountStroops
+                        }]
+                    })
+                    .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+                    .mockResolvedValueOnce({ rows: [], rowCount: 0 }),
+                release: vi.fn(),
+            };
+            (pool.connect as any).mockResolvedValue(client);
             const insertRow = {
                 id: 'bid-uuid',
                 auction_id: 1,
@@ -100,6 +118,8 @@ describe('Auction Routes', () => {
             expect(response.status).toBe(201);
             expect(response.body.auction_id).toBe(1);
             expect(response.body.amount_stroops).toBe(150);
+            expect(client.query).toHaveBeenCalledTimes(4);
+            expect(client.release).toHaveBeenCalled();
         });
 
         it('should return 401 when not authenticated', async () => {
