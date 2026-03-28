@@ -1,6 +1,9 @@
 #![cfg(test)]
 use super::*;
-use soroban_sdk::{testutils::{Address as _, Ledger}, Address, BytesN, Env};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    Address, BytesN, Env,
+};
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -238,8 +241,7 @@ fn test_suspend_publisher_admin() {
     let (client, admin) = setup(&env);
 
     let lifecycle = Address::generate(&env);
-    let network_id = env.register_contract(None, mocks::PublisherNetworkContract);
-    let network = Address::from_contract_id(&env, &network_id);
+    let network = env.register_contract(None, mocks::PublisherNetworkContract);
     let vault = Address::generate(&env);
     let publisher = Address::generate(&env);
 

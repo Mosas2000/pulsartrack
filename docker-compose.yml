@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # PostgreSQL Database
   db:
@@ -10,8 +8,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-pulsartrack}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-pulsartrack}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/prisma/schema.prisma:/docker-entrypoint-initdb.d/schema.prisma:ro
@@ -28,13 +24,13 @@ services:
     image: redis:7-alpine
     container_name: pulsartrack-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$REDIS_PASSWORD\" ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -58,7 +54,10 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-pulsartrack}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/${POSTGRES_DB:-pulsartrack}
 
       # Redis
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379
+
+      # Authentication
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
 
       # Stellar Network
       STELLAR_NETWORK: testnet

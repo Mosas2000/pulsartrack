@@ -398,7 +398,7 @@
                                 "symbol": "total_capacity"
                               },
                               "val": {
-                                "u64": 10000
+                                "u64": 0
                               }
                             },
                             {

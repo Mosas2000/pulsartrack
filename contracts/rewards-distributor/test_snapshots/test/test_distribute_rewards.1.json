@@ -515,7 +515,7 @@
                       "val": {
                         "i128": {
                           "hi": 0,
-                          "lo": 5000
+                          "lo": 0
                         }
                       }
                     },
@@ -547,6 +547,22 @@
                       },
                       "val": {
                         "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "vesting_duration"
+                      },
+                      "val": {
+                        "u64": 31536000
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "vesting_start"
+                      },
+                      "val": {
+                        "u64": 0
                       }
                     }
                   ]

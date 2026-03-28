@@ -16,7 +16,13 @@ router.get('/:address', async (req: Request, res: Response) => {
     }
     res.json(account);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    const response: Record<string, string> = {
+      error: 'Failed to fetch account details',
+    };
+    if (process.env.NODE_ENV === 'development') {
+      response.details = err.message;
+    }
+    res.status(500).json(response);
   }
 });
 

@@ -43,16 +43,9 @@ describe('Publisher Routes', () => {
                 website: 'https://newpub.com'
             };
 
+            // Duplicate check, then insert
             (pool.query as any)
                 .mockResolvedValueOnce({ rows: [] })
-            // First call: SELECT duplicate check (no existing publisher)
-            // Second call: INSERT returning new publisher row
-            (pool.query as any)
-                .mockResolvedValueOnce({ rows: [] })
-            (pool.query as any)
-                // Duplicate check
-                .mockResolvedValueOnce({ rows: [] })
-                // Insert
                 .mockResolvedValueOnce({
                     rows: [{
                         id: 'pub-uuid',

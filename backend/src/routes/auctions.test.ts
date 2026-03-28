@@ -59,43 +59,7 @@ describe('Auction Routes', () => {
                 amountStroops: 150
             };
 
-            const client = {
-                query: vi
-                    .fn()
-                    .mockResolvedValueOnce({ rows: [], rowCount: 0 })
-                    .mockResolvedValueOnce({
-                        rows: [{
-                            id: 'bid-uuid',
-                            auction_id: 1,
-                            bidder: mockAddress,
-                            campaign_id: bidData.campaignId,
-                            amount_stroops: bidData.amountStroops
-                        }]
-                    })
-                    .mockResolvedValueOnce({ rows: [], rowCount: 1 })
-                    .mockResolvedValueOnce({ rows: [], rowCount: 0 }),
-                release: vi.fn(),
-            };
-            (pool.connect as any).mockResolvedValue(client);
-            const insertRow = {
-                id: 'bid-uuid',
-                auction_id: 1,
-                bidder: mockAddress,
-                campaign_id: bidData.campaignId,
-                amount_stroops: bidData.amountStroops
-            };
-
-            // Route uses pool.connect() for a transaction — mock the client
-            const mockClient = {
-                query: vi.fn()
-                    .mockResolvedValueOnce({ rows: [] })                  // BEGIN
-                    .mockResolvedValueOnce({ rows: [insertRow] })         // INSERT
-                    .mockResolvedValueOnce({ rows: [], rowCount: 1 })     // UPDATE
-                    .mockResolvedValueOnce({ rows: [] }),                 // COMMIT
-                release: vi.fn(),
-            };
-            (pool.connect as any).mockResolvedValue(mockClient);
-            setupClientMock(
+            const client = setupClientMock(
                 // Auction lookup
                 { rows: [{ publisher: otherAddress, floor_price_stroops: '100', status: 'Open' }] },
                 // Campaign ownership check
@@ -118,7 +82,7 @@ describe('Auction Routes', () => {
             expect(response.status).toBe(201);
             expect(response.body.auction_id).toBe(1);
             expect(response.body.amount_stroops).toBe(150);
-            expect(client.query).toHaveBeenCalledTimes(4);
+            expect(client.query).toHaveBeenCalledTimes(6);
             expect(client.release).toHaveBeenCalled();
         });
 

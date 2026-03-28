@@ -2,13 +2,14 @@ import { WebSocketServer, WebSocket } from "ws";
 import { IncomingMessage, Server } from "http";
 import { streamLedgers } from "./horizon";
 import { logger } from "../lib/logger";
-import crypto from "crypto";
+import { decodeJwt } from "../lib/jwt";
 
 interface PulsarEvent {
   type: string;
   payload: any;
   timestamp: number;
   txHash?: string;
+  targetAccounts?: string[];
 }
 
 // Allowed incoming message types
@@ -25,6 +26,7 @@ const VALID_CHANNELS = new Set(["ledger", "campaigns", "auctions"]);
 interface ClientState {
   ws: WebSocket;
   subscriptions: Set<string>;
+  stellarAddress: string;
 }
 
 const clients = new Map<WebSocket, ClientState>();
@@ -34,32 +36,6 @@ const connectionsPerIp = new Map<string, number>();
 const MAX_CONNECTIONS_PER_IP = 5;
 
 let stopStream: (() => void) | null = null;
-
-const JWT_SECRET =
-  process.env.JWT_SECRET || crypto.randomBytes(32).toString("hex");
-
-/**
- * Verify a JWT token issued by auth.ts.
- * Returns the decoded payload or null if invalid/expired.
- */
-function verifyJwt(token: string | null): Record<string, any> | null {
-  if (!token) return null;
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const [header, body, sig] = parts;
-    const expected = crypto
-      .createHmac("sha256", JWT_SECRET)
-      .update(`${header}.${body}`)
-      .digest("base64url");
-    if (sig !== expected) return null;
-    const payload = JSON.parse(Buffer.from(body, "base64url").toString());
-    if (payload.exp < Math.floor(Date.now() / 1000)) return null;
-    return payload;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Parse and validate an incoming client message.
@@ -121,18 +97,35 @@ export function setupWebSocketServer(server: Server): WebSocketServer {
     connectionsPerIp.set(ip, ipCount + 1);
 
     // --- JWT authentication ---
-    const url = new URL(req.url ?? "", "http://localhost");
+    const host = req.headers.host ?? "localhost";
+    const url = new URL(req.url ?? "", `http://${host}`);
     const token = url.searchParams.get("token");
-    const payload = verifyJwt(token);
-    if (!payload) {
+
+    let payload: Record<string, any>;
+    try {
+      if (!token) throw new Error("Missing token");
+      payload = decodeJwt(token);
+      if (typeof payload.sub !== "string" || !payload.sub) {
+        throw new Error("Invalid token subject");
+      }
+    } catch {
       logger.warn(`[WS] Unauthenticated connection attempt from ${ip}`);
       ws.close(4001, "Unauthorized");
-      connectionsPerIp.set(ip, (connectionsPerIp.get(ip) ?? 1) - 1);
+      const remaining = (connectionsPerIp.get(ip) ?? 1) - 1;
+      if (remaining > 0) {
+        connectionsPerIp.set(ip, remaining);
+      } else {
+        connectionsPerIp.delete(ip);
+      }
       return;
     }
 
     // Register client with empty subscription set
-    const state: ClientState = { ws, subscriptions: new Set() };
+    const state: ClientState = {
+      ws,
+      subscriptions: new Set(),
+      stellarAddress: payload.sub,
+    };
     clients.set(ws, state);
     logger.info(`[WS] Client connected (${payload.sub}). Total: ${clients.size}`);
 
@@ -152,6 +145,8 @@ export function setupWebSocketServer(server: Server): WebSocketServer {
     ws.on("error", (err) => {
       logger.error(err, "[WS] Client error");
       clients.delete(ws);
+      const remaining = (connectionsPerIp.get(ip) ?? 1) - 1;
+      remaining > 0 ? connectionsPerIp.set(ip, remaining) : connectionsPerIp.delete(ip);
     });
 
     // --- Validated message handling ---
@@ -220,7 +215,16 @@ function sendToClient(ws: WebSocket, event: PulsarEvent): void {
 export function broadcastToChannel(channel: string, event: PulsarEvent): void {
   const msg = JSON.stringify(event);
   clients.forEach((state) => {
-    if (state.subscriptions.has(channel) && state.ws.readyState === WebSocket.OPEN) {
+    const isTargeted =
+      Array.isArray(event.targetAccounts) && event.targetAccounts.length > 0;
+    const allowedForClient =
+      !isTargeted || event.targetAccounts?.includes(state.stellarAddress) === true;
+
+    if (
+      allowedForClient
+      && state.subscriptions.has(channel)
+      && state.ws.readyState === WebSocket.OPEN
+    ) {
       state.ws.send(msg);
     }
   });
@@ -232,7 +236,12 @@ export function broadcastToChannel(channel: string, event: PulsarEvent): void {
 export function broadcast(event: PulsarEvent): void {
   const msg = JSON.stringify(event);
   clients.forEach((state) => {
-    if (state.ws.readyState === WebSocket.OPEN) {
+    const isTargeted =
+      Array.isArray(event.targetAccounts) && event.targetAccounts.length > 0;
+    const allowedForClient =
+      !isTargeted || event.targetAccounts?.includes(state.stellarAddress) === true;
+
+    if (allowedForClient && state.ws.readyState === WebSocket.OPEN) {
       state.ws.send(msg);
     }
   });
