@@ -96,12 +96,21 @@ impl PayoutAutomationContract {
             panic!("unauthorized");
         }
 
+        if amount <= 0 {
+            panic!("amount must be positive");
+        }
+
+        let min_payout: i128 = env.storage().instance().get(&DataKey::MinPayoutAmount).unwrap_or(1_000_000);
+        if amount < min_payout {
+            panic!("amount below minimum payout");
+        }
+
         let counter: u64 = env
             .storage()
             .instance()
             .get(&DataKey::PayoutCounter)
             .unwrap_or(0);
-        let payout_id = counter + 1;
+        let payout_id = counter.checked_add(1).expect("counter overflow");
 
         let token_addr: Address = env
             .storage()
@@ -193,8 +202,14 @@ impl PayoutAutomationContract {
                     last_payout: 0,
                 });
 
-        earnings.total_paid += payout.amount;
-        earnings.pending_amount = earnings.pending_amount.saturating_sub(payout.amount);
+        earnings.total_paid = earnings
+            .total_paid
+            .checked_add(payout.amount)
+            .expect("total_paid overflow");
+        earnings.pending_amount = earnings
+            .pending_amount
+            .checked_sub(payout.amount)
+            .expect("insufficient pending earnings");
         earnings.last_payout = env.ledger().timestamp();
         env.storage().persistent().set(&key, &earnings);
         env.storage().persistent().extend_ttl(
@@ -231,7 +246,14 @@ impl PayoutAutomationContract {
                     last_payout: 0,
                 });
 
-        earnings.pending_amount += amount;
+        if amount <= 0 {
+            panic!("amount must be positive");
+        }
+
+        earnings.pending_amount = earnings
+            .pending_amount
+            .checked_add(amount)
+            .expect("pending_amount overflow");
         env.storage().persistent().set(&key, &earnings);
         env.storage().persistent().extend_ttl(
             &key,
