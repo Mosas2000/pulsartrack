@@ -161,7 +161,11 @@ router.post(
 
       res.status(201).json(rows[0]);
     } catch (err: any) {
-      await client.query("ROLLBACK");
+      try {
+        await client.query("ROLLBACK");
+      } catch (rollbackErr: any) {
+        req.log?.error({ rollbackErr }, "ROLLBACK failed");
+      }
       req.log?.error({ err }, "Failed to submit bid");
       const details =
         process.env.NODE_ENV === "development" ? err.message : undefined;

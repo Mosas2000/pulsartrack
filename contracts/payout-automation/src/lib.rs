@@ -137,6 +137,32 @@ impl PayoutAutomationContract {
             PERSISTENT_LIFETIME_THRESHOLD,
             PERSISTENT_BUMP_AMOUNT,
         );
+
+        // Update publisher earnings: this payout is now pending for the recipient.
+        let key = DataKey::PublisherEarnings(recipient.clone());
+        let mut earnings: PublisherEarnings =
+            env.storage()
+                .persistent()
+                .get(&key)
+                .unwrap_or(PublisherEarnings {
+                    publisher: recipient.clone(),
+                    pending_amount: 0,
+                    total_paid: 0,
+                    last_payout: 0,
+                });
+
+        earnings.pending_amount = earnings
+            .pending_amount
+            .checked_add(amount)
+            .expect("pending_amount overflow");
+
+        env.storage().persistent().set(&key, &earnings);
+        env.storage().persistent().extend_ttl(
+            &key,
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+
         env.storage()
             .instance()
             .set(&DataKey::PayoutCounter, &payout_id);
