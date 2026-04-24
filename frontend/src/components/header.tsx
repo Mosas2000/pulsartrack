@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+// Issue #368 — _hydrated replaces the local `mounted` pattern
 import { Menu, X, Zap, History, AlertTriangle, Moon, Sun, Monitor } from "lucide-react";
 import { useWalletStore } from "../store/wallet-store";
 import { useTransactionStore } from "../store/tx-store";
@@ -13,9 +14,8 @@ import { useTxNotifications } from "../hooks/useTxNotifications";
 import { useThemeStore, ThemeMode } from "../store/theme-store";
 
 export function Header() {
-  const { address, isConnected, networkMismatch } = useWalletStore();
+  const { address, isConnected, networkMismatch, _hydrated } = useWalletStore();
   const { getPendingTransactions } = useTransactionStore();
-  const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [txHistoryOpen, setTxHistoryOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -33,8 +33,6 @@ export function Header() {
   useTxNotifications();
 
   useEffect(() => {
-    setMounted(true);
-
     const check = async () => {
       try {
         await checkPendingTransactions();
@@ -43,23 +41,18 @@ export function Header() {
       }
     };
 
-    // Check pending transactions on mount
     check();
-
-    // Set up interval to check pending transactions periodically
-    const interval = setInterval(check, 30000); // Check every 30 seconds
-
+    const interval = setInterval(check, 30000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    // Update pending count
-    if (mounted) {
+    if (_hydrated) {
       setPendingCount(getPendingTransactions().length);
     }
-  }, [mounted, getPendingTransactions]);
+  }, [_hydrated, getPendingTransactions]);
 
-  if (!mounted) return null;
+  if (!_hydrated) return null;
 
   return (
     <>

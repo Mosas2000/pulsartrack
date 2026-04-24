@@ -10,6 +10,8 @@ interface WalletStore {
   network: string;
   freighterNetwork: string | null;
   networkMismatch: boolean;
+  /** Issue #368 — true once Zustand has rehydrated from localStorage. */
+  _hydrated: boolean;
   setAddress: (address: string | null) => void;
   setConnected: (connected: boolean) => void;
   setNetwork: (network: string) => void;
@@ -17,6 +19,7 @@ interface WalletStore {
   setNetworkMismatch: (mismatch: boolean) => void;
   disconnect: () => void;
   autoReconnect: () => Promise<void>;
+  setHydrated: (value: boolean) => void;
 }
 
 export const useWalletStore = create<WalletStore>()(
@@ -27,11 +30,13 @@ export const useWalletStore = create<WalletStore>()(
       network: "testnet",
       freighterNetwork: null,
       networkMismatch: false,
+      _hydrated: false,
       setAddress: (address) => set({ address }),
       setConnected: (connected) => set({ isConnected: connected }),
       setNetwork: (network) => set({ network }),
       setFreighterNetwork: (freighterNetwork) => set({ freighterNetwork }),
       setNetworkMismatch: (networkMismatch) => set({ networkMismatch }),
+      setHydrated: (value) => set({ _hydrated: value }),
       disconnect: () =>
         set({ address: null, isConnected: false, networkMismatch: false, freighterNetwork: null }),
       // Auto-reconnect flow callable by client code (checks connection and network)
@@ -70,6 +75,12 @@ export const useWalletStore = create<WalletStore>()(
               removeItem: () => {},
             } as any),
       ),
+      // Issue #368 — set _hydrated=true once Zustand has read localStorage.
+      // Components can gate rendering on this flag instead of using a local
+      // `mounted` useState, which eliminates the header flicker.
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
+      },
     },
   ),
 );

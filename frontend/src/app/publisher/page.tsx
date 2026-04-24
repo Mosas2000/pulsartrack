@@ -295,28 +295,35 @@ export default function PublisherPage() {
                   Publisher Tiers
                 </h3>
                 <div className="space-y-2">
-                  {[
-                    { tier: 'Bronze', min: 0, max: 399, color: 'amber' },
-                    { tier: 'Silver', min: 400, max: 599, color: 'gray' },
-                    { tier: 'Gold', min: 600, max: 799, color: 'yellow' },
-                    { tier: 'Platinum', min: 800, max: 1000, color: 'blue' },
-                  ].map(({ tier, min, max, color }) => (
-                    <div
-                      key={tier}
-                      className={`flex items-center justify-between px-3 py-2 rounded-lg ${
-                        reputationScore >= min && reputationScore <= max
-                          ? 'bg-indigo-50 border border-indigo-200'
-                          : 'bg-gray-50'
-                      }`}
-                    >
-                      <span className="text-sm font-medium text-gray-900">
-                        {tier}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {min} - {max} score
-                      </span>
-                    </div>
-                  ))}
+                  {/* Issue #370 — Platinum uses Infinity as upper bound so scores
+                      above 1000 still resolve to a tier. Negative scores are clamped
+                      to 0 before matching so they always land in Bronze. */}
+                  {([
+                    { tier: 'Bronze',   min: 0,   max: 399,      color: 'amber'  },
+                    { tier: 'Silver',   min: 400,  max: 599,      color: 'gray'   },
+                    { tier: 'Gold',     min: 600,  max: 799,      color: 'yellow' },
+                    { tier: 'Platinum', min: 800,  max: Infinity, color: 'blue'   },
+                  ] as Array<{ tier: string; min: number; max: number; color: string }>).map(({ tier, min, max }) => {
+                    const score = Math.max(reputationScore, 0);
+                    const isActive = score >= min && score <= max;
+                    const rangeLabel =
+                      max === Infinity ? `${min}+ score` : `${min} – ${max} score`;
+                    return (
+                      <div
+                        key={tier}
+                        className={`flex items-center justify-between px-3 py-2 rounded-lg ${
+                          isActive
+                            ? 'bg-indigo-50 border border-indigo-200'
+                            : 'bg-gray-50'
+                        }`}
+                      >
+                        <span className="text-sm font-medium text-gray-900">
+                          {tier}
+                        </span>
+                        <span className="text-xs text-gray-500">{rangeLabel}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
