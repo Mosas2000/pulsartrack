@@ -8,7 +8,7 @@ export interface AnalyticsTimeseriesPoint {
 
 interface UseAnalyticsTimeseriesOptions {
   campaignIds: string[];
-  timeframe: '7d' | '30d';
+  timeframe: '7d' | '30d' | '90d';
 }
 
 export function useAnalyticsTimeseries({ campaignIds, timeframe }: UseAnalyticsTimeseriesOptions) {

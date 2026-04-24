@@ -34,7 +34,7 @@ export function AnalyticsDashboard({
 
   const days = timeframe === "7d" ? 7 : timeframe === "30d" ? 30 : 90;
   const campaignIds = campaigns.map(c => c.campaign_id.toString());
-  const { data: timeseries, loading, error } = useAnalyticsTimeseries({ campaignIds, timeframe: days === 7 ? "7d" : "30d" });
+  const { data: timeseries, loading, error } = useAnalyticsTimeseries({ campaignIds, timeframe });
 
   return (
     <div className="space-y-6">
