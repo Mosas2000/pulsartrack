@@ -1,5 +1,9 @@
 import { Router, Request, Response } from "express";
-import { getFeeStats } from "../services/horizon";
+import {
+  getFeeStats,
+  getAccountDetails,
+  getAccountTransactions,
+} from "../services/horizon";
 import { stellarConfig, CONTRACT_IDS } from "../config/stellar";
 import { requireAuth } from "../middleware/auth";
 import campaignRoutes from "../routes/campaigns";
@@ -50,9 +54,13 @@ router.get("/network", async (_req: Request, res: Response) => {
       feeStats: fees,
     });
   } catch (err: any) {
-    _req.log?.error({ err }, 'Failed to fetch network info');
-    const details = process.env.NODE_ENV === 'development' ? err.message : undefined;
-    res.status(500).json({ error: 'Failed to fetch network info', ...(details && { details }) });
+    _req.log?.error({ err }, "Failed to fetch network info");
+    const details =
+      process.env.NODE_ENV === "development" ? err.message : undefined;
+    res.status(500).json({
+      error: "Failed to fetch network info",
+      ...(details && { details }),
+    });
   }
 });
 
@@ -66,9 +74,13 @@ router.get("/account/:address", async (req: Request, res: Response) => {
     }
     res.json(account);
   } catch (err: any) {
-    req.log?.error({ err }, 'Failed to fetch account details');
-    const details = process.env.NODE_ENV === 'development' ? err.message : undefined;
-    res.status(500).json({ error: 'Failed to fetch account details', ...(details && { details }) });
+    req.log?.error({ err }, "Failed to fetch account details");
+    const details =
+      process.env.NODE_ENV === "development" ? err.message : undefined;
+    res.status(500).json({
+      error: "Failed to fetch account details",
+      ...(details && { details }),
+    });
   }
 });
 
@@ -78,13 +90,18 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const { address } = req.params;
-      const limit = Math.min(parseInt(req.query.limit as string) || 20, 200);
+      const rawLimit = parseInt(req.query.limit as string);
+      const limit = Math.min(Math.max(isNaN(rawLimit) ? 20 : rawLimit, 1), 200);
       const txs = await getAccountTransactions(address as string, limit);
       res.json({ transactions: txs, count: txs.length });
     } catch (err: any) {
-      req.log?.error({ err }, 'Failed to fetch account transactions');
-      const details = process.env.NODE_ENV === 'development' ? err.message : undefined;
-      res.status(500).json({ error: 'Failed to fetch account transactions', ...(details && { details }) });
+      req.log?.error({ err }, "Failed to fetch account transactions");
+      const details =
+        process.env.NODE_ENV === "development" ? err.message : undefined;
+      res.status(500).json({
+        error: "Failed to fetch account transactions",
+        ...(details && { details }),
+      });
     }
   },
 );

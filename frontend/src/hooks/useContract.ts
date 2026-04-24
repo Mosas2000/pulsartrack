@@ -138,7 +138,10 @@ export function useAdvertiserCampaigns(
                 campaigns.push({ id: i, ...campaign });
               }
             })
-            .catch(() => null), // Ignore missing or failed campaigns
+            .catch((err) => {
+              console.error(`Failed to fetch campaign ${i}:`, err);
+              return null;
+            }),
         );
       }
       await Promise.all(promises);

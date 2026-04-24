@@ -82,33 +82,53 @@ const server = createServer(app);
 // Attach WebSocket server
 setupWebSocketServer(server);
 
-async function shutdown(code: number) {
-  logger.info(`[System] Shutting down with code ${code}...`);
-  try {
-    // Wait for the HTTP server to finish ongoing requests
-    await new Promise<void>((resolve) => {
-      server.close(() => resolve());
-    });
-    
-    // Cleanup DB and Redis
-    await prisma.$disconnect();
-    await pool.end();
-    await redisClient.quit();
-  } catch (err) {
-    logger.error({ err }, "[System] Error during shutdown cleanup");
-  }
-  process.exit(code);
+async function gracefulShutdown(signal: string) {
+  logger.info(`[PulsarTrack] Received ${signal}, shutting down gracefully...`);
+
+  // Force shutdown after 10 seconds
+  const forceShutdownTimer = setTimeout(() => {
+    logger.error("[PulsarTrack] Forced shutdown after timeout");
+    process.exit(1);
+  }, 10000);
+
+  server.close(async () => {
+    logger.info("[PulsarTrack] HTTP server closed");
+
+    try {
+      await prisma.$disconnect();
+      logger.info("[PulsarTrack] Prisma disconnected");
+    } catch (err) {
+      logger.error({ err }, "[PulsarTrack] Prisma disconnect error");
+    }
+
+    try {
+      await pool.end();
+      logger.info("[PulsarTrack] PostgreSQL pool closed");
+    } catch (err) {
+      logger.error({ err }, "[PulsarTrack] PostgreSQL disconnect error");
+    }
+
+    try {
+      await redisClient.quit();
+      logger.info("[PulsarTrack] Redis disconnected");
+    } catch (err) {
+      logger.error({ err }, "[PulsarTrack] Redis disconnect error");
+    }
+
+    clearTimeout(forceShutdownTimer);
+    process.exit(0);
+  });
 }
 
 // Ensure the application shuts down gracefully on OS signals
-process.on("SIGTERM", () => shutdown(0));
-process.on("SIGINT", () => shutdown(0));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 // Start server
 async function start() {
   // Validate contract IDs — throws in production, warns in development
   validateContractIds();
-  
+
   // Validate simulation account
   await validateSimulationAccount();
 
@@ -119,7 +139,7 @@ async function start() {
       logger.fatal(
         "[DB] PostgreSQL connection failed — aborting in production",
       );
-      await shutdown(1);
+      process.exit(1);
     }
     logger.warn("[DB] Could not connect to PostgreSQL — running without DB");
   } else {
@@ -133,7 +153,7 @@ async function start() {
   } catch (err) {
     if (process.env.NODE_ENV === "production") {
       logger.fatal("[DB] Prisma connection failed — aborting in production");
-      await shutdown(1);
+      process.exit(1);
     }
     logger.warn("[DB] Prisma client unavailable — running without ORM");
   }
@@ -147,9 +167,9 @@ async function start() {
   });
 }
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== "test") {
   start().catch(async (err) => {
-    console.error('Failed to start server:', err);
+    console.error("Failed to start server:", err);
     await shutdown(1);
   });
 }

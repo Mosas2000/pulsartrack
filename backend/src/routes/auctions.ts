@@ -17,7 +17,8 @@ router.get(
   }),
   async (req: Request, res: Response) => {
     try {
-      const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+      const rawLimit = parseInt(req.query.limit as string);
+      const limit = Math.min(Math.max(isNaN(rawLimit) ? 20 : rawLimit, 1), 100);
       const status = req.query.status as string;
 
       let query = `
@@ -69,9 +70,15 @@ router.get(
         total: onChainTotal ?? auctions.length,
       });
     } catch (err: any) {
-      req.log?.error({ err }, 'Failed to fetch auctions');
-      const details = process.env.NODE_ENV === 'development' ? err.message : undefined;
-      res.status(500).json({ error: "Failed to fetch auctions", ...(details && { details }) });
+      req.log?.error({ err }, "Failed to fetch auctions");
+      const details =
+        process.env.NODE_ENV === "development" ? err.message : undefined;
+      res
+        .status(500)
+        .json({
+          error: "Failed to fetch auctions",
+          ...(details && { details }),
+        });
     }
   },
 );
@@ -105,12 +112,16 @@ router.post(
       }
       const auction = auctionResult.rows[0];
       if (auction.status !== "Open") {
-        return res.status(400).json({ error: "Auction is not open for bidding" });
+        return res
+          .status(400)
+          .json({ error: "Auction is not open for bidding" });
       }
 
       // Prevent self-bidding
       if (auction.publisher === address) {
-        return res.status(403).json({ error: "Cannot bid on your own auction" });
+        return res
+          .status(403)
+          .json({ error: "Cannot bid on your own auction" });
       }
 
       // Verify bid meets floor price
@@ -127,10 +138,12 @@ router.post(
         return res.status(404).json({ error: "Campaign not found" });
       }
       if (campaignResult.rows[0].advertiser !== address) {
-        return res.status(403).json({ error: "Campaign does not belong to you" });
+        return res
+          .status(403)
+          .json({ error: "Campaign does not belong to you" });
       }
 
-      await client.query('BEGIN');
+      await client.query("BEGIN");
 
       const { rows } = await client.query(
         `INSERT INTO bids (auction_id, bidder, campaign_id, amount_stroops)
@@ -143,14 +156,17 @@ router.post(
         [auctionId],
       );
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       res.status(201).json(rows[0]);
     } catch (err: any) {
-      await client.query('ROLLBACK');
-      req.log?.error({ err }, 'Failed to submit bid');
-      const details = process.env.NODE_ENV === 'development' ? err.message : undefined;
-      res.status(500).json({ error: "Failed to submit bid", ...(details && { details }) });
+      await client.query("ROLLBACK");
+      req.log?.error({ err }, "Failed to submit bid");
+      const details =
+        process.env.NODE_ENV === "development" ? err.message : undefined;
+      res
+        .status(500)
+        .json({ error: "Failed to submit bid", ...(details && { details }) });
     } finally {
       client.release();
     }
