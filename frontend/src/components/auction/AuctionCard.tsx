@@ -1,7 +1,8 @@
 'use client';
 
 import { Auction } from '@/types/contracts';
-import { formatXlm, formatAddress } from '@/lib/display-utils';
+import { formatAddress } from '@/lib/display-utils';
+import { stroopsToXlm } from '@/lib/stellar-config';
 import { clsx } from 'clsx';
 
 interface AuctionCardProps {
@@ -57,8 +58,9 @@ function Countdown({ endTime }: { endTime: number | bigint }) {
 
 export function AuctionCard({ auction, onBid }: AuctionCardProps) {
   const isOpen = auction.status === 'Open';
-  const floorXlm = formatXlm(BigInt(auction.floor_price));
-  const winningBidXlm = auction.winning_bid ? formatXlm(BigInt(auction.winning_bid)) : null;
+  // floor_price and winning_bid are in stroops (1 XLM = 10,000,000 stroops)
+  const floorXlm = stroopsToXlm(auction.floor_price);
+  const winningBidXlm = auction.winning_bid !== null ? stroopsToXlm(auction.winning_bid) : null;
 
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 hover:border-gray-600 transition-all">
@@ -79,12 +81,12 @@ export function AuctionCard({ auction, onBid }: AuctionCardProps) {
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">Floor price</span>
-          <span className="text-gray-200">{floorXlm} XLM</span>
+          <span className="text-gray-200">{floorXlm.toFixed(4)} XLM</span>
         </div>
         {winningBidXlm && (
           <div className="flex justify-between">
             <span className="text-gray-400">Current bid</span>
-            <span className="text-green-400 font-semibold">{winningBidXlm} XLM</span>
+            <span className="text-green-400 font-semibold">{winningBidXlm!.toFixed(4)} XLM</span>
           </div>
         )}
         <div className="flex justify-between">
