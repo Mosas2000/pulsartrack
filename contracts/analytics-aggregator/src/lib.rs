@@ -54,6 +54,19 @@ const INSTANCE_BUMP_AMOUNT: u32 = 86_400;
 const PERSISTENT_LIFETIME_THRESHOLD: u32 = 120_960;
 const PERSISTENT_BUMP_AMOUNT: u32 = 1_051_200;
 
+fn require_oracle(env: &Env, caller: &Address) {
+    caller.require_auth();
+    let stored_oracle: Address = env
+        .storage()
+        .instance()
+        .get(&DataKey::OracleAddress)
+        .expect("oracle not set");
+
+    if caller != &stored_oracle {
+        panic!("only oracle can record analytics");
+    }
+}
+
 #[contract]
 pub struct AnalyticsAggregatorContract;
 
@@ -86,12 +99,7 @@ impl AnalyticsAggregatorContract {
         env.storage()
             .instance()
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
-        let _stored_oracle: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::OracleAddress)
-            .unwrap();
-        caller.require_auth();
+        require_oracle(&env, &caller);
 
         let mut analytics: CampaignAnalytics = env
             .storage()
@@ -161,7 +169,7 @@ impl AnalyticsAggregatorContract {
         env.storage()
             .instance()
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
-        caller.require_auth();
+        require_oracle(&env, &caller);
 
         let mut analytics: CampaignAnalytics = env
             .storage()
