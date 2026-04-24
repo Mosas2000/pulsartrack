@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export interface AnalyticsTimeseriesPoint {
   date: string;
@@ -16,6 +16,10 @@ export function useAnalyticsTimeseries({ campaignIds, timeframe }: UseAnalyticsT
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Memoize campaignIds to prevent unnecessary re-fetches when the array reference changes
+  // but the content remains the same.
+  const campaignIdsKey = useMemo(() => campaignIds.join(','), [campaignIds]);
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -23,7 +27,7 @@ export function useAnalyticsTimeseries({ campaignIds, timeframe }: UseAnalyticsT
     setError(null);
 
     // Replace with actual API endpoint or contract call
-    fetch(`/api/analytics/timeseries?campaignIds=${campaignIds.join(',')}&timeframe=${timeframe}`, {
+    fetch(`/api/analytics/timeseries?campaignIds=${campaignIdsKey}&timeframe=${timeframe}`, {
       signal: controller.signal,
     })
       .then(res => {
@@ -46,7 +50,7 @@ export function useAnalyticsTimeseries({ campaignIds, timeframe }: UseAnalyticsT
     return () => {
       controller.abort();
     };
-  }, [campaignIds.join(','), timeframe]);
+  }, [campaignIdsKey, timeframe]);
 
   return { data, loading, error };
 }

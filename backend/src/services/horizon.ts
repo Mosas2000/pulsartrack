@@ -134,11 +134,15 @@ export async function isAccountFunded(address: string): Promise<boolean> {
   return account !== null && account.xlmBalance >= 1;
 }
 
-async function fetchFromHorizon(path: string) {
+export async function fetchFromHorizon(path: string) {
+  const server = createHorizonServer();
   try {
     logger.debug({ path }, 'Fetching from Horizon');
+    const response = await server.httpClient.get(path);
+    return response.data;
   } catch (err) {
     logger.error({ err, path }, 'Horizon fetch failed');
     throw err;
   }
 }
+
