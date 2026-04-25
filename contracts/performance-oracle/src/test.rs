@@ -61,6 +61,22 @@ fn test_submit_attestation() {
 }
 
 #[test]
+#[should_panic(expected = "already attested")]
+fn test_submit_attestation_rejects_duplicate_attester_for_same_campaign() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (c, admin) = setup(&env);
+    let att = Address::generate(&env);
+    let data_hash = BytesN::from_array(&env, &[7u8; 32]);
+
+    c.authorize_attester(&admin, &att);
+    c.submit_attestation(&att, &77u64, &1000u64, &50u64, &5u32, &90u32, &data_hash);
+
+    // Second submission by the same attester for the same campaign must fail.
+    c.submit_attestation(&att, &77u64, &1200u64, &60u64, &6u32, &91u32, &data_hash);
+}
+
+#[test]
 fn test_get_attestation_count() {
     let env = Env::default();
     env.mock_all_auths();
