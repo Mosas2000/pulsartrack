@@ -19,13 +19,13 @@ router.get(
       const rawLimit = parseInt(req.query.limit as string);
       const limit = Math.min(Math.max(isNaN(rawLimit) ? 20 : rawLimit, 1), 100);
 
-      const { rows } = await pool.query(
+const { rows } = await pool.query(
         `SELECT address, display_name, tier, reputation_score,
               impressions_served, earnings_stroops, last_activity
-       FROM publishers
-       WHERE status = 'Verified'
-       ORDER BY earnings_stroops DESC, reputation_score DESC
-       LIMIT $1`,
+        FROM publishers
+        WHERE status IN ('Verified', 'Pending')
+        ORDER BY earnings_stroops DESC, reputation_score DESC
+        LIMIT $1`,
         [limit],
       );
 

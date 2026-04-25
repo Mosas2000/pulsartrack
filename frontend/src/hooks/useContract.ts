@@ -39,12 +39,22 @@ export function useContractCall() {
 /**
  * Hook for contract read-only operations
  */
+function getArgsKey(args: any[]): string {
+  return args
+    .map((arg) => {
+      if (!arg || typeof arg.__type === "undefined") return JSON.stringify(arg);
+      return `${arg.__type}:${String(arg.value)}`;
+    })
+    .join(",");
+}
+
 export function useContractRead<T = any>(
   options: ReadOnlyOptions,
   enabled = true,
 ) {
+  const argsKey = options.args ? getArgsKey(options.args) : "";
   return useQuery<T, Error>({
-    queryKey: ["contract", options.contractId, options.method, options.args],
+    queryKey: ["contract", options.contractId, options.method, argsKey],
     queryFn: () => callReadOnly(options),
     enabled: enabled && !!options.contractId,
     staleTime: 30_000,

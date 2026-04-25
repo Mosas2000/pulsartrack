@@ -151,8 +151,8 @@ export async function callContract(
       description: options.description || `${options.method} on contract`,
     });
 
-    for (let i = 0; i < 15; i++) {
-      const delay = Math.min(2000 * Math.pow(1.5, i), 10000);
+    for (let i = 0; i < 30; i++) {
+      const delay = Math.min(2000 * Math.pow(1.5, i), 15000);
       await new Promise((resolve) => setTimeout(resolve, delay));
       const getResult = await server.getTransaction(txHash);
 

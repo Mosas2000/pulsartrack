@@ -34,8 +34,8 @@ router.get('/stats', async (_req: Request, res: Response) => {
     }
 
     res.json({
-      total_campaigns: onChainTotal ?? stats.total_campaigns,
-      active_campaigns: stats.active_campaigns,
+      total_campaigns: (onChainTotal != null && onChainTotal > 0) ? onChainTotal : Number(stats.total_campaigns),
+      active_campaigns: Number(stats.active_campaigns),
       total_impressions: Number(stats.total_impressions),
       total_clicks: Number(stats.total_clicks),
       total_spent_xlm: Number(stats.total_spent_stroops) / 1e7,
