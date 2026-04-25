@@ -14,6 +14,14 @@ import { useTransactionStore, Transaction } from "../../store/tx-store";
 import { pollTransaction } from "../../lib/tx-recovery";
 import { getExplorerTxUrl } from "../../lib/stellar-config";
 
+/**
+ * Stellar blockchain timestamps are Unix seconds. JS Date/Date.now() use ms.
+ * Threshold 1e12: the year 2001 in ms — any value below that is seconds.
+ */
+export function normalizeTimestampToMs(timestamp: number): number {
+  return timestamp < 1e12 ? timestamp * 1000 : timestamp;
+}
+
 interface TxHistoryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -75,9 +83,11 @@ export function TxHistory({ isOpen, onClose }: TxHistoryProps) {
   };
 
   const formatTimestamp = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = Date.now();
-    const diff = now - timestamp;
+    // Stellar blockchain timestamps are Unix seconds; Date.now() is ms.
+    // Normalise: values below 1e12 are seconds, convert to ms.
+    const ms = normalizeTimestampToMs(timestamp);
+    const date = new Date(ms);
+    const diff = Date.now() - ms;
 
     // Less than 1 minute
     if (diff < 60000) return "Just now";
