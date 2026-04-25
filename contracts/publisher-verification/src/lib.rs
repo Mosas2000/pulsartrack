@@ -207,7 +207,6 @@ impl PublisherVerificationContract {
         env: Env,
         admin: Address,
         publisher: Address,
-        initial_tier: PublisherTier,
     ) {
         env.storage()
             .instance()
@@ -225,9 +224,10 @@ impl PublisherVerificationContract {
             .expect("publisher not found");
 
         pub_data.status = VerificationStatus::Verified;
-        pub_data.tier = initial_tier;
         pub_data.verified_at = Some(env.ledger().timestamp());
         pub_data.reputation_score = 100;
+        // Derive tier from starting score to prevent admin from assigning unearned tiers
+        pub_data.tier = Self::_score_to_tier(100);
 
         let _ttl_key = DataKey::Publisher(publisher.clone());
         env.storage().persistent().set(&_ttl_key, &pub_data);

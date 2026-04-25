@@ -126,6 +126,10 @@ impl TimelockExecutorContract {
         let now = env.ledger().timestamp();
         let grace: u64 = env.storage().instance().get(&DataKey::GracePeriod).unwrap();
 
+        // Validate that eta + grace_period won't overflow
+        let eta = now.checked_add(delay_secs).expect("eta calculation overflows u64");
+        let _grace_end = eta.checked_add(grace).expect("grace period end overflows u64");
+
         let entry = TimelockEntry {
             entry_id,
             proposer: proposer.clone(),
@@ -133,7 +137,7 @@ impl TimelockExecutorContract {
             function_name,
             args,
             description,
-            eta: now + delay_secs,
+            eta,
             grace_period: grace,
             status: TimelockStatus::Queued,
             queued_at: now,
@@ -190,7 +194,11 @@ impl TimelockExecutorContract {
             panic!("timelock not expired");
         }
 
-        if now > entry.eta + entry.grace_period {
+        // Use checked arithmetic to prevent overflow when computing grace period end
+        let grace_end = entry.eta.checked_add(entry.grace_period)
+            .expect("grace period end overflows u64");
+
+        if now > grace_end {
             entry.status = TimelockStatus::Expired;
             let _ttl_key = DataKey::Entry(entry_id);
             env.storage().persistent().set(&_ttl_key, &entry);
@@ -268,9 +276,14 @@ impl TimelockExecutorContract {
             .get::<DataKey, TimelockEntry>(&DataKey::Entry(entry_id))
         {
             let now = env.ledger().timestamp();
-            entry.status == TimelockStatus::Queued
-                && now >= entry.eta
-                && now <= entry.eta + entry.grace_period
+            // Use checked arithmetic to prevent overflow
+            if let Some(grace_end) = entry.eta.checked_add(entry.grace_period) {
+                entry.status == TimelockStatus::Queued
+                    && now >= entry.eta
+                    && now <= grace_end
+            } else {
+                false
+            }
         } else {
             false
         }

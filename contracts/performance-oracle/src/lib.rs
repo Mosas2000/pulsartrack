@@ -49,6 +49,7 @@ const INSTANCE_LIFETIME_THRESHOLD: u32 = 17_280;
 const INSTANCE_BUMP_AMOUNT: u32 = 86_400;
 const PERSISTENT_LIFETIME_THRESHOLD: u32 = 120_960;
 const PERSISTENT_BUMP_AMOUNT: u32 = 1_051_200;
+const MAX_CONSENSUS_ATTESTERS: u32 = 50;
 
 #[contract]
 pub struct PerformanceOracleContract;
@@ -121,6 +122,17 @@ impl PerformanceOracleContract {
             .has(&DataKey::Attestation(campaign_id, attester.clone()))
         {
             panic!("already attested");
+        }
+
+        // Enforce hard cap on attesters to prevent exceeding Soroban CPU limits
+        let count: u32 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::AttestationCount(campaign_id))
+            .unwrap_or(0);
+
+        if count >= MAX_CONSENSUS_ATTESTERS {
+            panic!("attester limit reached");
         }
 
         let attestation = PerformanceAttestation {

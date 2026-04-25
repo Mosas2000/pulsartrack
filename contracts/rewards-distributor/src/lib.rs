@@ -173,12 +173,12 @@ impl RewardsDistributorContract {
                 total_claimed: 0,
                 pending: 0,
                 last_earned: 0,
-                vesting_start: now,
+                vesting_start: 0,
                 vesting_duration,
             });
 
-        // Initialize vesting_start on first distribution if not set
-        if rewards.total_earned == 0 {
+        // Initialize vesting_start on first distribution using vesting_start == 0 as sentinel
+        if rewards.vesting_start == 0 {
             rewards.vesting_start = now;
             rewards.vesting_duration = vesting_duration;
         }
