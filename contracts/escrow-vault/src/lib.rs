@@ -202,6 +202,15 @@ impl EscrowVaultContract {
             panic!("invalid performance threshold");
         }
 
+        let min_threshold: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::MinApprovalThreshold)
+            .unwrap_or(1);
+        if (required_approvers.len() as u32) < min_threshold {
+            panic!("not enough approvers for required threshold");
+        }
+
         // Transfer funds to escrow contract
         let token_addr: Address = env
             .storage()

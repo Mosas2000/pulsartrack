@@ -13,10 +13,8 @@ const RESPONSE_TIMEOUT_MS = Number.parseInt(
     10,
 );
 
-// Initialize Redis-backed rate limiters
 configureRateLimiters(redisClient);
 
-// Middleware
 app.use(helmet());
 app.use(cors({
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
@@ -39,15 +37,17 @@ app.use((req, res, next) => {
 });
 app.use(rateLimit());
 
-// API routes
+// Safely serialize BigInt values as strings to avoid precision loss
+app.set('json replacer', (_key: string, value: unknown) =>
+    typeof value === 'bigint' ? value.toString() : value
+);
+
 app.use('/api', apiRoutes);
 
-// 404 handler
 app.use((_req, res) => {
     res.status(404).json({ error: 'Route not found' });
 });
 
-// Error handler
 app.use(errorHandler);
 
 export default app;
