@@ -3,9 +3,8 @@
 
 #![no_std]
 use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short,
-    xdr::ToXdr,
-    Address, Bytes, BytesN, Env, String,
+    contract, contractimpl, contracttype, symbol_short, xdr::ToXdr, Address, Bytes, BytesN, Env,
+    String,
 };
 
 #[contracttype]
@@ -25,9 +24,9 @@ pub struct PrivacyConsent {
 #[derive(Clone)]
 pub struct AnonymousSegmentProof {
     pub proof_id: BytesN<32>,
-    pub segment_ids: String,  // comma-separated segment IDs
+    pub segment_ids: String, // comma-separated segment IDs
     pub prover: Address,
-    pub zkp_hash: BytesN<32>,  // zero-knowledge proof hash
+    pub zkp_hash: BytesN<32>, // zero-knowledge proof hash
     pub verified: bool,
     pub created_at: u64,
 }
@@ -63,13 +62,17 @@ pub struct PrivacyLayerContract;
 #[contractimpl]
 impl PrivacyLayerContract {
     pub fn initialize(env: Env, admin: Address) {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         if env.storage().instance().has(&DataKey::Admin) {
             panic!("already initialized");
         }
         admin.require_auth();
         env.storage().instance().set(&DataKey::Admin, &admin);
-        env.storage().instance().set(&DataKey::RequestCounter, &0u64);
+        env.storage()
+            .instance()
+            .set(&DataKey::RequestCounter, &0u64);
     }
 
     pub fn set_consent(
@@ -81,7 +84,9 @@ impl PrivacyLayerContract {
         third_party_sharing: bool,
         expires_in: Option<u64>,
     ) {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         user.require_auth();
 
         let mut consent_data = Bytes::new(&env);
@@ -105,23 +110,27 @@ impl PrivacyLayerContract {
 
         let _ttl_key = DataKey::Consent(user.clone());
         env.storage().persistent().set(&_ttl_key, &consent);
-        env.storage().persistent().extend_ttl(&_ttl_key, PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
-
-        env.events().publish(
-            (symbol_short!("privacy"), symbol_short!("consent")),
-            user,
+        env.storage().persistent().extend_ttl(
+            &_ttl_key,
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
         );
+
+        env.events()
+            .publish((symbol_short!("privacy"), symbol_short!("consent")), user);
     }
 
     pub fn revoke_consent(env: Env, user: Address) {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         user.require_auth();
-        env.storage().persistent().remove(&DataKey::Consent(user.clone()));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::Consent(user.clone()));
 
-        env.events().publish(
-            (symbol_short!("privacy"), symbol_short!("revoked")),
-            user,
-        );
+        env.events()
+            .publish((symbol_short!("privacy"), symbol_short!("revoked")), user);
     }
 
     pub fn submit_zkp(
@@ -130,7 +139,9 @@ impl PrivacyLayerContract {
         segment_ids: String,
         zkp_hash: BytesN<32>,
     ) -> BytesN<32> {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         prover.require_auth();
 
         let mut proof_data = Bytes::new(&env);
@@ -152,18 +163,22 @@ impl PrivacyLayerContract {
 
         let _ttl_key = DataKey::Proof(proof_id.clone().into());
         env.storage().persistent().set(&_ttl_key, &proof);
-        env.storage().persistent().extend_ttl(&_ttl_key, PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
-
-        env.events().publish(
-            (symbol_short!("zkp"), symbol_short!("submitted")),
-            prover,
+        env.storage().persistent().extend_ttl(
+            &_ttl_key,
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
         );
+
+        env.events()
+            .publish((symbol_short!("zkp"), symbol_short!("submitted")), prover);
 
         proof_id.into()
     }
 
     pub fn verify_zkp(env: Env, admin: Address, proof_id: BytesN<32>) {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         admin.require_auth();
         let stored_admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
         if admin != stored_admin {
@@ -179,12 +194,22 @@ impl PrivacyLayerContract {
         proof.verified = true;
         let _ttl_key = DataKey::Proof(proof_id);
         env.storage().persistent().set(&_ttl_key, &proof);
-        env.storage().persistent().extend_ttl(&_ttl_key, PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
+        env.storage().persistent().extend_ttl(
+            &_ttl_key,
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
     }
 
     pub fn has_consent(env: Env, user: Address, consent_type: String) -> bool {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
-        if let Some(consent) = env.storage().persistent().get::<DataKey, PrivacyConsent>(&DataKey::Consent(user)) {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        if let Some(consent) = env
+            .storage()
+            .persistent()
+            .get::<DataKey, PrivacyConsent>(&DataKey::Consent(user))
+        {
             if let Some(expires) = consent.expires_at {
                 if expires <= env.ledger().timestamp() {
                     return false;
@@ -208,12 +233,16 @@ impl PrivacyLayerContract {
     }
 
     pub fn get_consent(env: Env, user: Address) -> Option<PrivacyConsent> {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         env.storage().persistent().get(&DataKey::Consent(user))
     }
 
     pub fn get_proof(env: Env, proof_id: BytesN<32>) -> Option<AnonymousSegmentProof> {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         env.storage().persistent().get(&DataKey::Proof(proof_id))
     }
 }

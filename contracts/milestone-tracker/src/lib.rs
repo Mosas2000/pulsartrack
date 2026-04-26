@@ -25,9 +25,9 @@ pub struct Milestone {
     pub current_value: u64,
     pub reward_amount: i128,
     pub status: MilestoneStatus,
-    pub deadline: u64,           // Unix timestamp (changed from deadline_ledger: u32)
+    pub deadline: u64, // Unix timestamp (changed from deadline_ledger: u32)
     pub achieved_at: Option<u64>, // Unix timestamp
-    pub created_at: u64,          // Unix timestamp
+    pub created_at: u64, // Unix timestamp
 }
 
 #[contracttype]

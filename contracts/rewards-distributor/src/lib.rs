@@ -27,8 +27,8 @@ pub struct UserRewards {
     pub total_claimed: i128,
     pub pending: i128,
     pub last_earned: u64,
-    pub vesting_start: u64,     // timestamp when vesting begins
-    pub vesting_duration: u64,  // total vesting period in seconds
+    pub vesting_start: u64,    // timestamp when vesting begins
+    pub vesting_duration: u64, // total vesting period in seconds
 }
 
 #[contracttype]

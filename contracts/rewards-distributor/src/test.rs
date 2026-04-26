@@ -111,7 +111,13 @@ fn test_claim_rewards_caps_accrual_at_vesting_end() {
     let recipient = Address::generate(&env);
 
     mint(&env, &token, &c.address, 10_000_000);
-    c.create_program(&admin, &s(&env, "Staking"), &1_000_000i128, &100i128, &10_000u32);
+    c.create_program(
+        &admin,
+        &s(&env, "Staking"),
+        &1_000_000i128,
+        &100i128,
+        &10_000u32,
+    );
 
     env.ledger().with_mut(|li| {
         li.timestamp = 100;
@@ -140,7 +146,13 @@ fn test_claim_rewards_cannot_exceed_total_earned_after_vesting_end() {
     let recipient = Address::generate(&env);
 
     mint(&env, &token, &c.address, 10_000_000);
-    c.create_program(&admin, &s(&env, "Staking"), &1_000_000i128, &100i128, &10_000u32);
+    c.create_program(
+        &admin,
+        &s(&env, "Staking"),
+        &1_000_000i128,
+        &100i128,
+        &10_000u32,
+    );
     c.distribute_rewards(&admin, &recipient, &1_000i128, &1u32);
 
     env.ledger().with_mut(|li| {

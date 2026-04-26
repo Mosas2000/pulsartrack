@@ -232,7 +232,7 @@ fn test_total_burned_accumulates_across_distributions() {
     client.distribute_platform_revenue(&admin);
 
     let pool_after_first = client.get_revenue_pool();
-    assert_eq!(pool_after_first.burn_amount, 0);   // cleared after burn
+    assert_eq!(pool_after_first.burn_amount, 0); // cleared after burn
     assert_eq!(pool_after_first.total_burned, 2_500); // recorded cumulatively
 
     // Second distribution — burn another 2_500

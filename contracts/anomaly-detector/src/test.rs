@@ -69,10 +69,10 @@ fn test_report_anomaly() {
     env.mock_all_auths();
     let (c, _, oracle) = setup(&env);
     let publisher = Address::generate(&env);
-    
+
     // Set baseline first
     c.set_baseline(&oracle, &1u64, &1000u64, &50u64, &300u32);
-    
+
     // Report anomaly with metrics exceeding threshold (300% = 3x)
     // 4000 impressions > 3000 threshold (1000 * 300%)
     c.report_anomaly(
@@ -122,10 +122,10 @@ fn test_report_anomaly_below_threshold() {
     env.mock_all_auths();
     let (c, _, oracle) = setup(&env);
     let publisher = Address::generate(&env);
-    
+
     // Set baseline
     c.set_baseline(&oracle, &1u64, &1000u64, &50u64, &300u32);
-    
+
     // Try to report anomaly with metrics NOT exceeding threshold
     // 2000 impressions < 3000 threshold (1000 * 300%)
     // 100 clicks < 150 threshold (50 * 300%)
@@ -149,7 +149,7 @@ fn test_report_anomaly_no_baseline() {
     env.mock_all_auths();
     let (c, _, oracle) = setup(&env);
     let publisher = Address::generate(&env);
-    
+
     // Report anomaly without setting baseline (should succeed)
     c.report_anomaly(
         &oracle,
@@ -172,10 +172,10 @@ fn test_report_anomaly_clicks_exceed_threshold() {
     env.mock_all_auths();
     let (c, _, oracle) = setup(&env);
     let publisher = Address::generate(&env);
-    
+
     // Set baseline
     c.set_baseline(&oracle, &1u64, &1000u64, &50u64, &300u32);
-    
+
     // Report anomaly where only clicks exceed threshold
     // 2000 impressions < 3000 threshold
     // 200 clicks > 150 threshold (50 * 300%)

@@ -198,11 +198,16 @@ fn test_optimization_does_not_break_reset() {
     });
 
     // Optimize budget on Day 1
-    c.optimize_budget(&oracle, &1u64, &12_000i128, &soroban_sdk::String::from_str(&env, "better performance"));
+    c.optimize_budget(
+        &oracle,
+        &1u64,
+        &12_000i128,
+        &soroban_sdk::String::from_str(&env, "better performance"),
+    );
 
     // Check if we can spend (should be reset to 0, so 12,000 available)
     assert!(c.can_spend(&1u64, &12_000i128));
-    
+
     // Record spend on Day 1
     c.record_spend(&admin, &1u64, &5_000i128);
     let alloc = c.get_allocation(&1u64).unwrap();
@@ -229,9 +234,9 @@ fn test_hourly_budget_remainder_tracked() {
         &100u32,
     );
     let alloc = c.get_allocation(&1u64).unwrap();
-    assert_eq!(alloc.hourly_budget, 4);         // 100 / 24 = 4
-    assert_eq!(alloc.budget_remainder, 4);       // 100 % 24 = 4
-    // First 4 hours get 5 stroops, remaining 20 hours get 4 = 4*5 + 20*4 = 100
+    assert_eq!(alloc.hourly_budget, 4); // 100 / 24 = 4
+    assert_eq!(alloc.budget_remainder, 4); // 100 % 24 = 4
+                                           // First 4 hours get 5 stroops, remaining 20 hours get 4 = 4*5 + 20*4 = 100
     assert_eq!(
         alloc.budget_remainder * (alloc.hourly_budget + 1)
             + (24 - alloc.budget_remainder) * alloc.hourly_budget,
@@ -256,7 +261,12 @@ fn test_hourly_budget_remainder_after_optimization() {
     );
 
     // Optimize to a value that doesn't divide evenly by 24
-    c.optimize_budget(&oracle, &1u64, &100i128, &soroban_sdk::String::from_str(&env, "test remainder"));
+    c.optimize_budget(
+        &oracle,
+        &1u64,
+        &100i128,
+        &soroban_sdk::String::from_str(&env, "test remainder"),
+    );
     let alloc = c.get_allocation(&1u64).unwrap();
     assert_eq!(alloc.hourly_budget, 4);
     assert_eq!(alloc.budget_remainder, 4);

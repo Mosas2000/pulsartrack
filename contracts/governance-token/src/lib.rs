@@ -197,7 +197,10 @@ impl GovernanceTokenContract {
             .storage()
             .persistent()
             .get(&DataKey::Allowance(from.clone(), spender.clone()))
-            .unwrap_or(Allowance { amount: 0, expiry: 0 });
+            .unwrap_or(Allowance {
+                amount: 0,
+                expiry: 0,
+            });
 
         if env.ledger().sequence() > allowance.expiry {
             panic!("allowance expired");

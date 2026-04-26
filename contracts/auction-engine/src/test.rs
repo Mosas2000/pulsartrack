@@ -152,7 +152,7 @@ fn test_multiple_bids_highest_wins() {
 
     let tc = TokenClient::new(&env, &token_addr);
     assert_eq!(tc.balance(&bidder1), 10_000); // Refunded
-    assert_eq!(tc.balance(&bidder2), 6_000);  // Escrowed
+    assert_eq!(tc.balance(&bidder2), 6_000); // Escrowed
     assert_eq!(tc.balance(&client.address), 4_000);
 }
 
@@ -438,7 +438,8 @@ fn test_bidder_refunds_self_on_higher_bid() {
     let bidder = Address::generate(&env);
     mint(&env, &token_addr, &bidder, 10_000);
 
-    let auction_id = client.create_auction(&publisher, &slot(&env), &1_000i128, &5_000i128, &3600u64);
+    let auction_id =
+        client.create_auction(&publisher, &slot(&env), &1_000i128, &5_000i128, &3600u64);
 
     client.place_bid(&bidder, &auction_id, &2_000i128, &1u64);
     let tc = TokenClient::new(&env, &token_addr);

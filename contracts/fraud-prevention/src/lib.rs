@@ -123,7 +123,9 @@ impl FraudPreventionContract {
     }
 
     pub fn add_oracle(env: Env, admin: Address, oracle: Address) {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         admin.require_auth();
         let stored_admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
         if admin != stored_admin {
@@ -131,17 +133,25 @@ impl FraudPreventionContract {
         }
         let _ttl_key = DataKey::AuthorizedOracle(oracle.clone());
         env.storage().persistent().set(&_ttl_key, &true);
-        env.storage().persistent().extend_ttl(&_ttl_key, PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
+        env.storage().persistent().extend_ttl(
+            &_ttl_key,
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
     }
 
     pub fn remove_oracle(env: Env, admin: Address, oracle: Address) {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         admin.require_auth();
         let stored_admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
         if admin != stored_admin {
             panic!("unauthorized");
         }
-        env.storage().persistent().remove(&DataKey::AuthorizedOracle(oracle));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::AuthorizedOracle(oracle));
     }
 
     /// Verify an ad view
@@ -170,12 +180,20 @@ impl FraudPreventionContract {
         }
 
         let view_id = Self::_generate_view_id(&env, campaign_id, &publisher, &viewer);
-        if env.storage().persistent().has(&DataKey::ViewRecord(view_id.clone())) {
+        if env
+            .storage()
+            .persistent()
+            .has(&DataKey::ViewRecord(view_id.clone()))
+        {
             panic!("duplicate view");
         }
 
         let score = Self::_calculate_score(&env, campaign_id, &publisher, &proof_data);
-        let threshold: u32 = env.storage().instance().get(&DataKey::VerificationThreshold).unwrap_or(80);
+        let threshold: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::VerificationThreshold)
+            .unwrap_or(80);
         let verified = score >= threshold;
 
         let record = ViewRecord {
@@ -215,15 +233,26 @@ impl FraudPreventionContract {
         } else {
             cache.rejected_views += 1;
         }
-        cache.average_score = ((cache.average_score as u64 * (cache.total_views - 1) + score as u64) / cache.total_views) as u32;
+        cache.average_score = ((cache.average_score as u64 * (cache.total_views - 1)
+            + score as u64)
+            / cache.total_views) as u32;
         env.storage().temporary().set(&cache_key, &cache);
 
         if verified {
-            let counter: u64 = env.storage().instance().get(&DataKey::VerifyCounter).unwrap_or(0);
-            env.storage().instance().set(&DataKey::VerifyCounter, &(counter + 1));
+            let counter: u64 = env
+                .storage()
+                .instance()
+                .get(&DataKey::VerifyCounter)
+                .unwrap_or(0);
+            env.storage()
+                .instance()
+                .set(&DataKey::VerifyCounter, &(counter + 1));
         }
 
-        env.events().publish((symbol_short!("view"), symbol_short!("verified")), (campaign_id, publisher, verified));
+        env.events().publish(
+            (symbol_short!("view"), symbol_short!("verified")),
+            (campaign_id, publisher, verified),
+        );
 
         if !verified {
             panic!("verification failed");
@@ -286,7 +315,9 @@ impl FraudPreventionContract {
         if admin != stored_admin {
             panic!("unauthorized");
         }
-        env.storage().persistent().remove(&DataKey::SuspiciousActivity(publisher));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::SuspiciousActivity(publisher));
     }
 
     pub fn suspend_publisher(env: Env, admin: Address, publisher: Address) {
@@ -332,7 +363,9 @@ impl FraudPreventionContract {
         if threshold < 50 || threshold > 100 {
             panic!("invalid threshold");
         }
-        env.storage().instance().set(&DataKey::VerificationThreshold, &threshold);
+        env.storage()
+            .instance()
+            .set(&DataKey::VerificationThreshold, &threshold);
     }
 
     pub fn get_verification_stats(env: Env, campaign_id: u64) -> VerificationCache {
@@ -340,12 +373,15 @@ impl FraudPreventionContract {
             .instance()
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         let current_day = env.ledger().timestamp() / 86_400;
-        env.storage().temporary().get(&DataKey::VerificationCache(campaign_id, current_day)).unwrap_or(VerificationCache {
-            total_views: 0,
-            verified_views: 0,
-            rejected_views: 0,
-            average_score: 0,
-        })
+        env.storage()
+            .temporary()
+            .get(&DataKey::VerificationCache(campaign_id, current_day))
+            .unwrap_or(VerificationCache {
+                total_views: 0,
+                verified_views: 0,
+                rejected_views: 0,
+                average_score: 0,
+            })
     }
 
     pub fn get_suspicious_status(env: Env, publisher: Address) -> Option<SuspiciousActivity> {
@@ -411,7 +447,11 @@ impl FraudPreventionContract {
         if caller == &admin {
             return;
         }
-        let is_oracle = env.storage().persistent().get(&DataKey::AuthorizedOracle(caller.clone())).unwrap_or(false);
+        let is_oracle = env
+            .storage()
+            .persistent()
+            .get(&DataKey::AuthorizedOracle(caller.clone()))
+            .unwrap_or(false);
         if !is_oracle {
             panic!("unauthorized - only admin or oracle can flag publishers");
         }
@@ -445,7 +485,8 @@ impl FraudPreventionContract {
                 .instance()
                 .get::<DataKey, Address>(&DataKey::CampaignLifecycle)
             {
-                let lifecycle_client = mocks::CampaignLifecycleContractClient::new(env, &lifecycle_addr);
+                let lifecycle_client =
+                    mocks::CampaignLifecycleContractClient::new(env, &lifecycle_addr);
                 lifecycle_client.pause_for_fraud(&env.current_contract_address(), &campaign_id);
             }
         }
