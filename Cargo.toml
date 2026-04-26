@@ -41,6 +41,7 @@ members = [
   "contracts/budget-optimizer",
   "contracts/anomaly-detector",
   "contracts/common-admin",
+  "contracts/vesting-schedule",
 ]
 
 [workspace.dependencies]
