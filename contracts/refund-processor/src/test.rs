@@ -23,6 +23,16 @@ fn s(env: &Env, v: &str) -> String {
     String::from_str(env, v)
 }
 
+fn setup_campaign(env: &Env, contract_id: &Address, campaign_id: u64, budget: i128) {
+    let key = DataKey::Campaign(campaign_id);
+    let campaign = Campaign {
+        total_budget: budget,
+    };
+    env.as_contract(contract_id, || {
+        env.storage().persistent().set(&key, &campaign);
+    });
+}
+
 #[test]
 fn test_initialize() {
     let env = Env::default();
@@ -45,6 +55,7 @@ fn test_request_refund() {
     env.mock_all_auths();
     let (c, _, _, _) = setup(&env);
     let requester = Address::generate(&env);
+    setup_campaign(&env, &c.address, 1, 100_000);
     let id = c.request_refund(&requester, &1u64, &50_000i128, &s(&env, "poor performance"));
     assert_eq!(id, 1);
     let refund = c.get_refund(&id).unwrap();
@@ -58,6 +69,7 @@ fn test_approve_refund() {
     env.mock_all_auths();
     let (c, admin, _, _) = setup(&env);
     let requester = Address::generate(&env);
+    setup_campaign(&env, &c.address, 1, 100_000);
     let id = c.request_refund(&requester, &1u64, &50_000i128, &s(&env, "reason"));
     c.approve_refund(&admin, &id, &30_000i128);
     let refund = c.get_refund(&id).unwrap();
@@ -71,6 +83,7 @@ fn test_reject_refund() {
     env.mock_all_auths();
     let (c, admin, _, _) = setup(&env);
     let requester = Address::generate(&env);
+    setup_campaign(&env, &c.address, 1, 100_000);
     let id = c.request_refund(&requester, &1u64, &50_000i128, &s(&env, "reason"));
     c.reject_refund(&admin, &id);
     let refund = c.get_refund(&id).unwrap();
@@ -84,6 +97,7 @@ fn test_approve_refund_unauthorized() {
     env.mock_all_auths();
     let (c, _, _, _) = setup(&env);
     let requester = Address::generate(&env);
+    setup_campaign(&env, &c.address, 1, 100_000);
     let id = c.request_refund(&requester, &1u64, &50_000i128, &s(&env, "reason"));
     c.approve_refund(&Address::generate(&env), &id, &30_000i128);
 }

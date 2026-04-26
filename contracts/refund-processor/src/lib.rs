@@ -33,6 +33,12 @@ pub struct RefundRequest {
 
 #[contracttype]
 #[derive(Clone)]
+pub struct Campaign {
+    pub total_budget: i128,
+}
+
+#[contracttype]
+#[derive(Clone)]
 pub enum DataKey {
     Admin,
     PendingAdmin,
@@ -40,6 +46,7 @@ pub enum DataKey {
     RefundCounter,
     AutoRefundPeriod,
     Refund(u64),
+    Campaign(u64),
 }
 
 const INSTANCE_LIFETIME_THRESHOLD: u32 = 17_280;
@@ -82,6 +89,16 @@ impl RefundProcessorContract {
 
         if amount <= 0 {
             panic!("invalid amount");
+        }
+
+        let campaign: Campaign = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Campaign(campaign_id))
+            .expect("campaign not found");
+
+        if amount > campaign.total_budget {
+            panic!("refund amount exceeds campaign budget");
         }
 
         let counter: u64 = env
