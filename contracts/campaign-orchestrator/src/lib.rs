@@ -249,6 +249,9 @@ impl CampaignOrchestratorContract {
             .get(&DataKey::PlatformFeePct)
             .unwrap_or(2);
         let platform_fee = (budget * platform_fee_pct as i128) / 100;
+        if platform_fee <= 0 {
+            panic!("invalid platform fee");
+        }
 
         // Transfer budget + fee from advertiser to this contract
         let token_addr: Address = env
@@ -640,8 +643,8 @@ impl CampaignOrchestratorContract {
         if admin != stored_admin {
             panic!("unauthorized");
         }
-        if fee_pct > 10 {
-            panic!("fee too high");
+        if fee_pct == 0 || fee_pct > 10 {
+            panic!("fee must be between 1 and 10");
         }
         env.storage()
             .instance()

@@ -143,6 +143,15 @@ fn test_set_platform_fee() {
 }
 
 #[test]
+#[should_panic(expected = "fee must be between 1 and 10")]
+fn test_set_platform_fee_zero_rejected() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (c, admin, _, _) = setup(&env);
+    c.set_platform_fee(&admin, &0u32);
+}
+
+#[test]
 #[should_panic(expected = "unauthorized")]
 fn test_set_platform_fee_unauthorized() {
     let env = Env::default();
