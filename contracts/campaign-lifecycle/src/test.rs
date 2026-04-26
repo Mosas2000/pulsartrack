@@ -533,10 +533,25 @@ fn test_transition_completed_to_archived() {
     let advertiser = Address::generate(&env);
 
     client.register_campaign(&advertiser, &1u64, &10_000u32);
-    client.transition(&advertiser, &1u64, &LifecycleState::PendingReview, &make_reason(&env));
+    client.transition(
+        &advertiser,
+        &1u64,
+        &LifecycleState::PendingReview,
+        &make_reason(&env),
+    );
     client.transition(&admin, &1u64, &LifecycleState::Active, &make_reason(&env));
-    client.transition(&advertiser, &1u64, &LifecycleState::Completed, &String::from_str(&env, "done"));
-    client.transition(&admin, &1u64, &LifecycleState::Archived, &String::from_str(&env, "archiving"));
+    client.transition(
+        &advertiser,
+        &1u64,
+        &LifecycleState::Completed,
+        &String::from_str(&env, "done"),
+    );
+    client.transition(
+        &admin,
+        &1u64,
+        &LifecycleState::Archived,
+        &String::from_str(&env, "archiving"),
+    );
 
     let lc = client.get_lifecycle(&1u64).unwrap();
     assert!(matches!(lc.state, LifecycleState::Archived));
@@ -550,10 +565,25 @@ fn test_transition_expired_to_archived() {
     let advertiser = Address::generate(&env);
 
     client.register_campaign(&advertiser, &1u64, &10_000u32);
-    client.transition(&advertiser, &1u64, &LifecycleState::PendingReview, &make_reason(&env));
+    client.transition(
+        &advertiser,
+        &1u64,
+        &LifecycleState::PendingReview,
+        &make_reason(&env),
+    );
     client.transition(&admin, &1u64, &LifecycleState::Active, &make_reason(&env));
-    client.transition(&admin, &1u64, &LifecycleState::Expired, &String::from_str(&env, "timed out"));
-    client.transition(&admin, &1u64, &LifecycleState::Archived, &String::from_str(&env, "archiving"));
+    client.transition(
+        &admin,
+        &1u64,
+        &LifecycleState::Expired,
+        &String::from_str(&env, "timed out"),
+    );
+    client.transition(
+        &admin,
+        &1u64,
+        &LifecycleState::Archived,
+        &String::from_str(&env, "archiving"),
+    );
 
     let lc = client.get_lifecycle(&1u64).unwrap();
     assert!(matches!(lc.state, LifecycleState::Archived));
@@ -567,9 +597,24 @@ fn test_transition_rejected_to_archived() {
     let advertiser = Address::generate(&env);
 
     client.register_campaign(&advertiser, &1u64, &10_000u32);
-    client.transition(&advertiser, &1u64, &LifecycleState::PendingReview, &make_reason(&env));
-    client.transition(&admin, &1u64, &LifecycleState::Rejected, &String::from_str(&env, "policy violation"));
-    client.transition(&admin, &1u64, &LifecycleState::Archived, &String::from_str(&env, "archiving"));
+    client.transition(
+        &advertiser,
+        &1u64,
+        &LifecycleState::PendingReview,
+        &make_reason(&env),
+    );
+    client.transition(
+        &admin,
+        &1u64,
+        &LifecycleState::Rejected,
+        &String::from_str(&env, "policy violation"),
+    );
+    client.transition(
+        &admin,
+        &1u64,
+        &LifecycleState::Archived,
+        &String::from_str(&env, "archiving"),
+    );
 
     let lc = client.get_lifecycle(&1u64).unwrap();
     assert!(matches!(lc.state, LifecycleState::Archived));
@@ -584,10 +629,25 @@ fn test_archived_is_terminal() {
     let advertiser = Address::generate(&env);
 
     client.register_campaign(&advertiser, &1u64, &10_000u32);
-    client.transition(&advertiser, &1u64, &LifecycleState::PendingReview, &make_reason(&env));
+    client.transition(
+        &advertiser,
+        &1u64,
+        &LifecycleState::PendingReview,
+        &make_reason(&env),
+    );
     client.transition(&admin, &1u64, &LifecycleState::Active, &make_reason(&env));
-    client.transition(&advertiser, &1u64, &LifecycleState::Completed, &String::from_str(&env, "done"));
-    client.transition(&admin, &1u64, &LifecycleState::Archived, &String::from_str(&env, "archiving"));
+    client.transition(
+        &advertiser,
+        &1u64,
+        &LifecycleState::Completed,
+        &String::from_str(&env, "done"),
+    );
+    client.transition(
+        &admin,
+        &1u64,
+        &LifecycleState::Archived,
+        &String::from_str(&env, "archiving"),
+    );
     // Archived → Active must be blocked
     client.transition(&admin, &1u64, &LifecycleState::Active, &make_reason(&env));
 }
@@ -601,9 +661,19 @@ fn test_cancelled_is_terminal() {
     let advertiser = Address::generate(&env);
 
     client.register_campaign(&advertiser, &1u64, &10_000u32);
-    client.transition(&advertiser, &1u64, &LifecycleState::Cancelled, &String::from_str(&env, "changed mind"));
+    client.transition(
+        &advertiser,
+        &1u64,
+        &LifecycleState::Cancelled,
+        &String::from_str(&env, "changed mind"),
+    );
     // Cancelled → PendingReview must be blocked
-    client.transition(&advertiser, &1u64, &LifecycleState::PendingReview, &make_reason(&env));
+    client.transition(
+        &advertiser,
+        &1u64,
+        &LifecycleState::PendingReview,
+        &make_reason(&env),
+    );
 }
 
 // ─── set_fraud_contract ──────────────────────────────────────────────────────

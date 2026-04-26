@@ -219,20 +219,25 @@ fn test_approve_release_duplicate_fails() {
     let depositor = Address::generate(&env);
     let beneficiary = Address::generate(&env);
     let approver = Address::generate(&env);
-    
+
     // Use setup directly to avoid redundant boilerplate
     let sac = StellarAssetClient::new(&env, &token_addr);
     sac.mint(&depositor, &1_000_000);
 
     let escrow_id = client.create_escrow(
-        &depositor, &1u64, &beneficiary, &100_000i128,
-        &0u64, &0u32, &86_400u64,
+        &depositor,
+        &1u64,
+        &beneficiary,
+        &100_000i128,
+        &0u64,
+        &0u32,
+        &86_400u64,
         &vec![&env, approver.clone()],
     );
 
     client.approve_release(&approver, &escrow_id);
     assert_eq!(client.get_approval_count(&escrow_id), 1);
-    
+
     // Attempt second approval from same address
     client.approve_release(&approver, &escrow_id); // should panic
 }

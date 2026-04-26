@@ -39,9 +39,9 @@ pub enum DataKey {
     MinAttesters,
     ConsensusThresholdPct,
     Attester(Address),
-    Attestation(u64, Address), // campaign_id, attester
-    AttestationCount(u64),     // campaign_id
-    Consensus(u64),            // campaign_id
+    Attestation(u64, Address),       // campaign_id, attester
+    AttestationCount(u64),           // campaign_id
+    Consensus(u64),                  // campaign_id
     CampaignAttesterIndex(u64, u32), // campaign_id, index -> Address
 }
 

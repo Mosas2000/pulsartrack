@@ -2,7 +2,9 @@
 //! Time-locked execution of governance decisions on Stellar.
 
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, String, Symbol, Vec, Val};
+use soroban_sdk::{
+    contract, contractimpl, contracttype, symbol_short, Address, Env, String, Symbol, Val, Vec,
+};
 
 #[contracttype]
 #[derive(Clone, PartialEq)]
@@ -127,8 +129,12 @@ impl TimelockExecutorContract {
         let grace: u64 = env.storage().instance().get(&DataKey::GracePeriod).unwrap();
 
         // Validate that eta + grace_period won't overflow
-        let eta = now.checked_add(delay_secs).expect("eta calculation overflows u64");
-        let _grace_end = eta.checked_add(grace).expect("grace period end overflows u64");
+        let eta = now
+            .checked_add(delay_secs)
+            .expect("eta calculation overflows u64");
+        let _grace_end = eta
+            .checked_add(grace)
+            .expect("grace period end overflows u64");
 
         let entry = TimelockEntry {
             entry_id,
@@ -195,7 +201,9 @@ impl TimelockExecutorContract {
         }
 
         // Use checked arithmetic to prevent overflow when computing grace period end
-        let grace_end = entry.eta.checked_add(entry.grace_period)
+        let grace_end = entry
+            .eta
+            .checked_add(entry.grace_period)
             .expect("grace period end overflows u64");
 
         if now > grace_end {
@@ -211,7 +219,11 @@ impl TimelockExecutorContract {
         }
 
         // Perform the actual cross-contract invocation
-        let _: Val = env.invoke_contract(&entry.target_contract, &entry.function_name, entry.args.clone());
+        let _: Val = env.invoke_contract(
+            &entry.target_contract,
+            &entry.function_name,
+            entry.args.clone(),
+        );
 
         entry.status = TimelockStatus::Executed;
         entry.executed_at = Some(now);
@@ -278,9 +290,7 @@ impl TimelockExecutorContract {
             let now = env.ledger().timestamp();
             // Use checked arithmetic to prevent overflow
             if let Some(grace_end) = entry.eta.checked_add(entry.grace_period) {
-                entry.status == TimelockStatus::Queued
-                    && now >= entry.eta
-                    && now <= grace_end
+                entry.status == TimelockStatus::Queued && now >= entry.eta && now <= grace_end
             } else {
                 false
             }

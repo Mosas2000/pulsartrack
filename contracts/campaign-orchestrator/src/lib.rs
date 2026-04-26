@@ -3,8 +3,8 @@
 
 #![no_std]
 use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short, token, Address, Env, String,
-    IntoVal, Symbol, Val, Vec as SdkVec,
+    contract, contractimpl, contracttype, symbol_short, token, Address, Env, IntoVal, String,
+    Symbol, Val, Vec as SdkVec,
 };
 
 // Define external contract interfaces for cross-contract calls
@@ -166,43 +166,59 @@ impl CampaignOrchestratorContract {
 
     /// Set contract addresses for cross-contract validation (admin only)
     pub fn set_lifecycle_contract(env: Env, admin: Address, contract_address: Address) {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         admin.require_auth();
         let stored_admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
         if admin != stored_admin {
             panic!("unauthorized");
         }
-        env.storage().instance().set(&DataKey::LifecycleContract, &contract_address);
+        env.storage()
+            .instance()
+            .set(&DataKey::LifecycleContract, &contract_address);
     }
 
     pub fn set_escrow_contract(env: Env, admin: Address, contract_address: Address) {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         admin.require_auth();
         let stored_admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
         if admin != stored_admin {
             panic!("unauthorized");
         }
-        env.storage().instance().set(&DataKey::EscrowContract, &contract_address);
+        env.storage()
+            .instance()
+            .set(&DataKey::EscrowContract, &contract_address);
     }
 
     pub fn set_targeting_contract(env: Env, admin: Address, contract_address: Address) {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         admin.require_auth();
         let stored_admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
         if admin != stored_admin {
             panic!("unauthorized");
         }
-        env.storage().instance().set(&DataKey::TargetingContract, &contract_address);
+        env.storage()
+            .instance()
+            .set(&DataKey::TargetingContract, &contract_address);
     }
 
     pub fn set_auction_contract(env: Env, admin: Address, contract_address: Address) {
-        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         admin.require_auth();
         let stored_admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
         if admin != stored_admin {
             panic!("unauthorized");
         }
-        env.storage().instance().set(&DataKey::AuctionContract, &contract_address);
+        env.storage()
+            .instance()
+            .set(&DataKey::AuctionContract, &contract_address);
     }
 
     /// Create a new ad campaign
@@ -376,7 +392,7 @@ impl CampaignOrchestratorContract {
 
         if campaign.current_views >= campaign.target_views {
             campaign.status = CampaignStatus::Completed;
-            
+
             // Decrement active campaigns count for advertiser
             let stats_key = DataKey::AdvertiserStats(campaign.advertiser.clone());
             if let Some(mut stats) = env
@@ -719,31 +735,39 @@ impl CampaignOrchestratorContract {
     /// Validate campaign across all contracts before processing
     fn _validate_campaign_cross_contract(env: &Env, campaign_id: u64, publisher: &Address) {
         // 1. Validate campaign lifecycle status
-        if let Some(lifecycle_addr) = env.storage().instance().get::<DataKey, Address>(&DataKey::LifecycleContract) {
+        if let Some(lifecycle_addr) = env
+            .storage()
+            .instance()
+            .get::<DataKey, Address>(&DataKey::LifecycleContract)
+        {
             // Call get_lifecycle on the lifecycle contract
             let lifecycle_result: Option<Val> = env.invoke_contract(
                 &lifecycle_addr,
                 &Symbol::new(env, "get_lifecycle"),
                 SdkVec::from_array(env, [campaign_id.into_val(env)]),
             );
-            
+
             if lifecycle_result.is_none() {
                 panic!("campaign not found in lifecycle contract");
             }
-            
+
             // Note: In production, you would deserialize the result and check the state
             // For now, we're validating that the campaign exists in the lifecycle contract
         }
 
         // 2. Validate escrow has sufficient budget
-        if let Some(escrow_addr) = env.storage().instance().get::<DataKey, Address>(&DataKey::EscrowContract) {
+        if let Some(escrow_addr) = env
+            .storage()
+            .instance()
+            .get::<DataKey, Address>(&DataKey::EscrowContract)
+        {
             // Call get_escrow on the escrow contract
             let escrow_result: Option<Val> = env.invoke_contract(
                 &escrow_addr,
                 &Symbol::new(env, "get_escrow"),
                 SdkVec::from_array(env, [campaign_id.into_val(env)]),
             );
-            
+
             // If escrow exists, validate it can be released (has budget)
             if escrow_result.is_some() {
                 let can_release: bool = env.invoke_contract(
@@ -751,7 +775,7 @@ impl CampaignOrchestratorContract {
                     &Symbol::new(env, "can_release"),
                     SdkVec::from_array(env, [campaign_id.into_val(env)]),
                 );
-                
+
                 if !can_release {
                     panic!("escrow cannot be released - insufficient budget or conditions not met");
                 }
@@ -759,26 +783,27 @@ impl CampaignOrchestratorContract {
         }
 
         // 3. Validate publisher matches targeting rules
-        if let Some(targeting_addr) = env.storage().instance().get::<DataKey, Address>(&DataKey::TargetingContract) {
+        if let Some(targeting_addr) = env
+            .storage()
+            .instance()
+            .get::<DataKey, Address>(&DataKey::TargetingContract)
+        {
             // Call get_targeting to check if targeting config exists
             let targeting_result: Option<Val> = env.invoke_contract(
                 &targeting_addr,
                 &Symbol::new(env, "get_targeting"),
                 SdkVec::from_array(env, [campaign_id.into_val(env)]),
             );
-            
+
             // If targeting config exists, check publisher score
             if targeting_result.is_some() {
                 // Try to get the targeting score for this publisher
                 let score_result: Option<Val> = env.invoke_contract(
                     &targeting_addr,
                     &Symbol::new(env, "get_score"),
-                    SdkVec::from_array(env, [
-                        campaign_id.into_val(env),
-                        publisher.into_val(env),
-                    ]),
+                    SdkVec::from_array(env, [campaign_id.into_val(env), publisher.into_val(env)]),
                 );
-                
+
                 // If no score exists and targeting is configured, publisher may not be eligible
                 if score_result.is_none() {
                     // In production, you might want to compute the score on-the-fly

@@ -207,11 +207,7 @@ impl PublisherVerificationContract {
     }
 
     /// Verify a publisher (admin only)
-    pub fn verify_publisher(
-        env: Env,
-        admin: Address,
-        publisher: Address,
-    ) {
+    pub fn verify_publisher(env: Env, admin: Address, publisher: Address) {
         env.storage()
             .instance()
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
@@ -329,8 +325,12 @@ impl PublisherVerificationContract {
         env.storage()
             .instance()
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
-        
-        let orchestrator: Address = env.storage().instance().get(&DataKey::Orchestrator).unwrap();
+
+        let orchestrator: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Orchestrator)
+            .unwrap();
         if caller != orchestrator {
             panic!("unauthorized: only campaign orchestrator");
         }

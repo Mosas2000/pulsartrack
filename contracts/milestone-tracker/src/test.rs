@@ -1,6 +1,9 @@
 #![cfg(test)]
 use super::*;
-use soroban_sdk::{testutils::{Address as _, Ledger as _}, Address, Env, String};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger as _},
+    Address, Env, String,
+};
 
 fn setup(env: &Env) -> (MilestoneTrackerContractClient<'_>, Address, Address) {
     let admin = Address::generate(env);

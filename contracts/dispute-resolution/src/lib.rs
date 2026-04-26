@@ -307,7 +307,11 @@ impl DisputeResolutionContract {
                     token_client.transfer(&env.current_contract_address(), &dispute.claimant, &fee);
                 }
                 DisputeOutcome::Respondent => {
-                    token_client.transfer(&env.current_contract_address(), &dispute.respondent, &fee);
+                    token_client.transfer(
+                        &env.current_contract_address(),
+                        &dispute.respondent,
+                        &fee,
+                    );
                 }
                 DisputeOutcome::Split => {
                     let claimant_fee = fee / 2;
@@ -395,7 +399,11 @@ impl DisputeResolutionContract {
         if admin != stored_admin {
             panic!("unauthorized");
         }
-        if !env.storage().persistent().has(&DataKey::Dispute(dispute_id)) {
+        if !env
+            .storage()
+            .persistent()
+            .has(&DataKey::Dispute(dispute_id))
+        {
             panic!("dispute not found");
         }
         let _ttl_key = DataKey::DisputeEscrow(dispute_id);
@@ -428,15 +436,12 @@ impl DisputeResolutionContract {
         claimant_amount: i128,
         respondent_amount: i128,
     ) -> bool {
-        let escrow_contract: Address = if let Some(addr) = env
-            .storage()
-            .instance()
-            .get(&DataKey::EscrowContract)
-        {
-            addr
-        } else {
-            return false;
-        };
+        let escrow_contract: Address =
+            if let Some(addr) = env.storage().instance().get(&DataKey::EscrowContract) {
+                addr
+            } else {
+                return false;
+            };
         let escrow_id: u64 = if let Some(id) = env
             .storage()
             .persistent()

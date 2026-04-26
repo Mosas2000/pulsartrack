@@ -184,11 +184,11 @@ impl AuctionEngineContract {
         // Refund the previous highest bidder if they exist
         if let Some(prev_winner) = &auction.winner {
             if let Some(prev_amount) = auction.winning_bid {
-                token_client.transfer(
-                    &env.current_contract_address(),
-                    prev_winner,
-                    &prev_amount,
-                );
+                token_client.transfer(&env.current_contract_address(), prev_winner, &prev_amount);
+                // Clear previous bidder's deposit record as they are now refunded
+                env.storage()
+                    .persistent()
+                    .remove(&DataKey::BidderBid(auction_id, prev_winner.clone()));
             }
         }
 
@@ -284,18 +284,33 @@ impl AuctionEngineContract {
 
             if winning >= auction.reserve_price {
                 // Transfer payment from contract to publisher
-                token_client.transfer(&env.current_contract_address(), &auction.publisher, &winning);
+                token_client.transfer(
+                    &env.current_contract_address(),
+                    &auction.publisher,
+                    &winning,
+                );
                 AuctionStatus::Settled
             } else {
                 // Refund the highest bidder because reserve not met
                 if let Some(winner) = &auction.winner {
                     token_client.transfer(&env.current_contract_address(), winner, &winning);
+                    env.storage()
+                        .persistent()
+                        .remove(&DataKey::BidderBid(auction_id, winner.clone()));
                 }
                 AuctionStatus::Cancelled
             }
         } else {
             AuctionStatus::Cancelled
         };
+
+        if auction.status == AuctionStatus::Settled {
+            if let Some(winner) = &auction.winner {
+                env.storage()
+                    .persistent()
+                    .remove(&DataKey::BidderBid(auction_id, winner.clone()));
+            }
+        }
 
         let _ttl_key = DataKey::Auction(auction_id);
         env.storage().persistent().set(&_ttl_key, &auction);

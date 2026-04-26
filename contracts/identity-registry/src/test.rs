@@ -166,14 +166,14 @@ fn test_verify_identity_with_kyc() {
     env.mock_all_auths();
     let (c, admin) = setup(&env);
     let account = Address::generate(&env);
-    
+
     // Register mock KYC contract
     let kyc_id = env.register_contract(None, MockKycRegistry);
     let _kyc_client = MockKycRegistryClient::new(&env, &kyc_id);
-    
+
     // Configure identity registry to use mock KYC
     c.set_kyc_registry(&admin, &kyc_id);
-    
+
     c.register(
         &account,
         &IdentityType::Advertiser,
@@ -192,10 +192,10 @@ fn test_verify_identity_fails_without_kyc() {
     env.mock_all_auths();
     let (c, admin) = setup(&env);
     let account = Address::generate(&env);
-    
+
     let kyc_id = env.register_contract(None, MockKycRegistry);
     c.set_kyc_registry(&admin, &kyc_id);
-    
+
     c.register(
         &account,
         &IdentityType::Advertiser,
@@ -212,11 +212,11 @@ fn test_verify_identity_success_with_kyc() {
     env.mock_all_auths();
     let (c, admin) = setup(&env);
     let account = Address::generate(&env);
-    
+
     let kyc_id = env.register_contract(None, MockKycRegistry);
     let kyc_client = MockKycRegistryClient::new(&env, &kyc_id);
     c.set_kyc_registry(&admin, &kyc_id);
-    
+
     c.register(
         &account,
         &IdentityType::Advertiser,
@@ -228,7 +228,7 @@ fn test_verify_identity_success_with_kyc() {
     kyc_client.set_kyc_status(&account, &true);
 
     c.verify_identity(&admin, &account, &s(&env, "CredHash"));
-    
+
     let id = c.get_identity(&account).unwrap();
     assert!(matches!(id.status, IdentityStatus::Verified));
 }
@@ -239,7 +239,7 @@ fn test_set_kyc_registry_unauthorized() {
     env.mock_all_auths();
     let (c, _) = setup(&env);
     let kyc_id = env.register_contract(None, MockKycRegistry);
-    
+
     let res = c.try_set_kyc_registry(&Address::generate(&env), &kyc_id);
     assert!(res.is_err());
 }

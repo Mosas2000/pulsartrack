@@ -522,10 +522,9 @@ impl EscrowVaultContract {
         }
 
         let admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
-        let dispute_contract: Option<Address> = env.storage().instance().get(&DataKey::DisputeContract);
-        let is_authorized_dispute = dispute_contract
-            .map(|addr| addr == caller)
-            .unwrap_or(false);
+        let dispute_contract: Option<Address> =
+            env.storage().instance().get(&DataKey::DisputeContract);
+        let is_authorized_dispute = dispute_contract.map(|addr| addr == caller).unwrap_or(false);
         if caller != admin && !is_authorized_dispute {
             panic!("unauthorized");
         }
@@ -556,11 +555,7 @@ impl EscrowVaultContract {
         let token_client = token::Client::new(&env, &token_addr);
 
         if claimant_amount > 0 {
-            token_client.transfer(
-                &env.current_contract_address(),
-                &claimant,
-                &claimant_amount,
-            );
+            token_client.transfer(&env.current_contract_address(), &claimant, &claimant_amount);
         }
         if respondent_amount > 0 {
             token_client.transfer(
@@ -573,11 +568,11 @@ impl EscrowVaultContract {
         escrow.locked_amount -= total_settlement;
 
         // ✅ FIX: track each side's amount in the correct field
-        escrow.released_amount += claimant_amount;   // claimant receives a "release"
+        escrow.released_amount += claimant_amount; // claimant receives a "release"
         escrow.refunded_amount += respondent_amount; // respondent receives a "refund"
-    
+
         escrow.released_at = Some(env.ledger().timestamp());
-    
+
         // The state logic below is unchanged but now correct because the
         // accounting fields accurately reflect what was actually transferred
         escrow.state = if escrow.locked_amount == 0 {

@@ -160,23 +160,25 @@ impl AnomalyDetectorContract {
             .storage()
             .persistent()
             .get(&DataKey::Baseline(campaign_id));
-        
+
         if let Some(b) = baseline {
             // Calculate threshold multiplier (e.g., 300% = 3.0x)
             let threshold_multiplier = b.spike_threshold_pct as u64;
-            
+
             // Check if current metrics exceed baseline thresholds
-            let impressions_threshold = b.avg_impressions_per_hour
+            let impressions_threshold = b
+                .avg_impressions_per_hour
                 .saturating_mul(threshold_multiplier)
                 .saturating_div(100);
-            let clicks_threshold = b.avg_clicks_per_hour
+            let clicks_threshold = b
+                .avg_clicks_per_hour
                 .saturating_mul(threshold_multiplier)
                 .saturating_div(100);
-            
+
             // Validate that at least one metric exceeds the threshold
             let impressions_exceeded = current_impressions_per_hour > impressions_threshold;
             let clicks_exceeded = current_clicks_per_hour > clicks_threshold;
-            
+
             if !impressions_exceeded && !clicks_exceeded {
                 panic!("metrics do not exceed baseline thresholds");
             }

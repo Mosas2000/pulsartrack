@@ -11,19 +11,19 @@ pub fn propose_admin<K>(
     K: IntoVal<Env, Val> + TryFromVal<Env, Val> + Clone,
 {
     current_admin.require_auth();
-    let stored: Address = env.storage().instance().get(admin_key).expect("not initialized");
+    let stored: Address = env
+        .storage()
+        .instance()
+        .get(admin_key)
+        .expect("not initialized");
     if current_admin != stored {
         panic!("unauthorized");
     }
     env.storage().instance().set(pending_key, &new_admin);
 }
 
-pub fn accept_admin<K>(
-    env: &Env,
-    admin_key: &K,
-    pending_key: &K,
-    new_admin: Address,
-) where
+pub fn accept_admin<K>(env: &Env, admin_key: &K, pending_key: &K, new_admin: Address)
+where
     K: IntoVal<Env, Val> + TryFromVal<Env, Val> + Clone,
 {
     new_admin.require_auth();

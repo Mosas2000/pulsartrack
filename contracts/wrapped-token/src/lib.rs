@@ -38,7 +38,7 @@ pub enum DataKey {
     WrappedToken(String), // symbol
     WrapRecord(u64),
     UserBalance(String, Address), // symbol, user
-    ProcessedTx(String), // source transaction ID
+    ProcessedTx(String),          // source transaction ID
 }
 
 const INSTANCE_LIFETIME_THRESHOLD: u32 = 17_280;

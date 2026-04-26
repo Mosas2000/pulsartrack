@@ -124,7 +124,9 @@ impl AnalyticsAggregatorContract {
 
         if analytics.total_impressions > 0 {
             // Use u128 for CTR calculation and clamp to 10,000 (100%)
-            analytics.ctr = ((analytics.total_clicks as u128 * 10_000 / analytics.total_impressions as u128) as u32).min(10_000);
+            analytics.ctr = ((analytics.total_clicks as u128 * 10_000
+                / analytics.total_impressions as u128) as u32)
+                .min(10_000);
             // Use checked/saturating arithmetic for CPM
             analytics.cpm = (analytics.total_spend as i128)
                 .saturating_mul(1_000)
@@ -179,7 +181,9 @@ impl AnalyticsAggregatorContract {
 
         analytics.total_clicks += 1;
         if analytics.total_impressions > 0 {
-            analytics.ctr = ((analytics.total_clicks as u128 * 10_000 / analytics.total_impressions as u128) as u32).min(10_000);
+            analytics.ctr = ((analytics.total_clicks as u128 * 10_000
+                / analytics.total_impressions as u128) as u32)
+                .min(10_000);
         }
         analytics.last_updated = env.ledger().timestamp();
 
@@ -210,8 +214,7 @@ impl AnalyticsAggregatorContract {
 
         analytics.total_conversions += 1;
         if analytics.total_clicks > 0 {
-            analytics.cvr =
-                (analytics.total_conversions * 10_000 / analytics.total_clicks) as u32;
+            analytics.cvr = (analytics.total_conversions * 10_000 / analytics.total_clicks) as u32;
         }
         analytics.last_updated = env.ledger().timestamp();
 

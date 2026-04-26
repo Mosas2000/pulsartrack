@@ -1,6 +1,10 @@
 #![cfg(test)]
 use super::*;
-use soroban_sdk::{testutils::{Address as _, Ledger as _}, token::StellarAssetClient, Address, Env};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger as _},
+    token::StellarAssetClient,
+    Address, Env,
+};
 
 fn deploy_token(env: &Env, admin: &Address) -> Address {
     env.register_stellar_asset_contract_v2(admin.clone())
@@ -126,10 +130,10 @@ fn test_execute_payment_by_payer() {
     let token = deploy_token(&env, &admin);
     mint(&env, &token, &payer, 10_000);
     let id = c.create_recurring(&payer, &payee, &token, &1000i128, &1u64, &None);
-    
+
     // Fast forward time to allow execution
     env.ledger().with_mut(|li| li.timestamp = 2);
-    
+
     // Payer can execute
     c.execute_payment(&payer, &id);
     let payment = c.get_payment(&id).unwrap();
@@ -146,10 +150,10 @@ fn test_execute_payment_by_recipient() {
     let token = deploy_token(&env, &admin);
     mint(&env, &token, &payer, 10_000);
     let id = c.create_recurring(&payer, &payee, &token, &1000i128, &1u64, &None);
-    
+
     // Fast forward time to allow execution
     env.ledger().with_mut(|li| li.timestamp = 2);
-    
+
     // Recipient can execute
     c.execute_payment(&payee, &id);
     let payment = c.get_payment(&id).unwrap();
@@ -166,10 +170,10 @@ fn test_execute_payment_by_admin() {
     let token = deploy_token(&env, &admin);
     mint(&env, &token, &payer, 10_000);
     let id = c.create_recurring(&payer, &payee, &token, &1000i128, &1u64, &None);
-    
+
     // Fast forward time to allow execution
     env.ledger().with_mut(|li| li.timestamp = 2);
-    
+
     // Admin can execute
     c.execute_payment(&admin, &id);
     let payment = c.get_payment(&id).unwrap();
@@ -187,10 +191,10 @@ fn test_execute_payment_by_stranger_fails() {
     let token = Address::generate(&env);
     let stranger = Address::generate(&env);
     let id = c.create_recurring(&payer, &payee, &token, &1000i128, &1u64, &None);
-    
+
     // Fast forward time to allow execution
     env.ledger().with_mut(|li| li.timestamp = 2);
-    
+
     // Stranger cannot execute
     c.execute_payment(&stranger, &id);
 }
@@ -205,7 +209,7 @@ fn test_execute_payment_too_early() {
     let payee = Address::generate(&env);
     let token = Address::generate(&env);
     let id = c.create_recurring(&payer, &payee, &token, &1000i128, &86_400u64, &None);
-    
+
     // Try to execute immediately (too early)
     c.execute_payment(&payer, &id);
 }
@@ -221,11 +225,11 @@ fn test_execute_payment_max_reached() {
     let token = deploy_token(&env, &admin);
     mint(&env, &token, &payer, 10_000);
     let id = c.create_recurring(&payer, &payee, &token, &1000i128, &1u64, &Some(1u32));
-    
+
     // Execute first payment
     env.ledger().with_mut(|li| li.timestamp = 2);
     c.execute_payment(&payer, &id);
-    
+
     // Try to execute second payment (should fail - max reached)
     env.ledger().with_mut(|li| li.timestamp = 4);
     c.execute_payment(&payer, &id);
