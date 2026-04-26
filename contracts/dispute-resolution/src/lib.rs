@@ -255,7 +255,7 @@ impl DisputeResolutionContract {
             panic!("already resolved");
         }
 
-        let (claimant_amount, respondent_amount) = match outcome {
+        let (claimant_amount, respondent_amount) = match &outcome {
             DisputeOutcome::Claimant => (dispute.claim_amount, 0),
             DisputeOutcome::Respondent => (0, dispute.claim_amount),
             DisputeOutcome::Split => {
@@ -295,6 +295,15 @@ impl DisputeResolutionContract {
             }
         }
 
+        if outcome == DisputeOutcome::NoAction && dispute.claim_amount > 0 {
+            let token_client = token::Client::new(&env, &dispute.token);
+            token_client.transfer(
+                &env.current_contract_address(),
+                &dispute.claimant,
+                &dispute.claim_amount,
+            );
+        }
+
         let fee: i128 = env
             .storage()
             .instance()
@@ -302,40 +311,7 @@ impl DisputeResolutionContract {
             .unwrap_or(0);
         if fee > 0 {
             let token_client = token::Client::new(&env, &dispute.token);
-            match outcome {
-                DisputeOutcome::Claimant => {
-                    token_client.transfer(&env.current_contract_address(), &dispute.claimant, &fee);
-                }
-                DisputeOutcome::Respondent => {
-                    token_client.transfer(
-                        &env.current_contract_address(),
-                        &dispute.respondent,
-                        &fee,
-                    );
-                }
-                DisputeOutcome::Split => {
-                    let claimant_fee = fee / 2;
-                    let respondent_fee = fee - claimant_fee;
-                    if claimant_fee > 0 {
-                        token_client.transfer(
-                            &env.current_contract_address(),
-                            &dispute.claimant,
-                            &claimant_fee,
-                        );
-                    }
-                    if respondent_fee > 0 {
-                        token_client.transfer(
-                            &env.current_contract_address(),
-                            &dispute.respondent,
-                            &respondent_fee,
-                        );
-                    }
-                }
-                DisputeOutcome::NoAction => {
-                    token_client.transfer(&env.current_contract_address(), &dispute.claimant, &fee);
-                }
-                DisputeOutcome::Pending => {}
-            }
+            token_client.transfer(&env.current_contract_address(), &dispute.claimant, &fee);
         }
 
         dispute.outcome = outcome;

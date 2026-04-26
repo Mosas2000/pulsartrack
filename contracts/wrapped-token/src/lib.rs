@@ -34,6 +34,7 @@ pub enum DataKey {
     Admin,
     PendingAdmin,
     RelayerAddress,
+    MintingPaused,
     WrapRecordCounter,
     WrappedToken(String), // symbol
     WrapRecord(u64),
@@ -63,6 +64,9 @@ impl WrappedTokenContract {
         env.storage()
             .instance()
             .set(&DataKey::RelayerAddress, &relayer);
+        env.storage()
+            .instance()
+            .set(&DataKey::MintingPaused, &false);
         env.storage()
             .instance()
             .set(&DataKey::WrapRecordCounter, &0u64);
@@ -126,6 +130,14 @@ impl WrappedTokenContract {
             .unwrap();
         if relayer != stored_relayer {
             panic!("unauthorized relayer");
+        }
+        let minting_paused: bool = env
+            .storage()
+            .instance()
+            .get(&DataKey::MintingPaused)
+            .unwrap_or(false);
+        if minting_paused {
+            panic!("minting paused");
         }
 
         // Check for replay attack - ensure source_tx hasn't been processed
@@ -253,6 +265,34 @@ impl WrappedTokenContract {
             (symbol_short!("wrapped"), symbol_short!("burned")),
             (user, amount, target_address),
         );
+    }
+
+    pub fn set_relayer(env: Env, admin: Address, new_relayer: Address) {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        admin.require_auth();
+        let stored_admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
+        if admin != stored_admin {
+            panic!("unauthorized");
+        }
+        env.storage()
+            .instance()
+            .set(&DataKey::RelayerAddress, &new_relayer);
+    }
+
+    pub fn set_minting_paused(env: Env, admin: Address, paused: bool) {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        admin.require_auth();
+        let stored_admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
+        if admin != stored_admin {
+            panic!("unauthorized");
+        }
+        env.storage()
+            .instance()
+            .set(&DataKey::MintingPaused, &paused);
     }
 
     pub fn get_wrapped_token(env: Env, symbol: String) -> Option<WrappedToken> {

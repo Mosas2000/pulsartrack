@@ -76,11 +76,17 @@ impl VestingScheduleContract {
         }
 
         let key = DataKey::Schedule(beneficiary.clone());
+        let existing_claimed = env
+            .storage()
+            .persistent()
+            .get::<DataKey, VestingSchedule>(&key)
+            .map(|schedule| schedule.claimed_amount)
+            .unwrap_or(0);
         let schedule = VestingSchedule {
             beneficiary,
             token,
             total_amount,
-            claimed_amount: 0,
+            claimed_amount: existing_claimed,
             start_time,
             duration,
             cliff_duration,
@@ -171,3 +177,5 @@ impl VestingScheduleContract {
         pulsar_common_admin::accept_admin(&env, &DataKey::Admin, &DataKey::PendingAdmin, new_admin);
     }
 }
+
+mod test;
