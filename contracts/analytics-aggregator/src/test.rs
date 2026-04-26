@@ -106,11 +106,9 @@ fn test_record_conversion_increments_count() {
     let env = Env::default();
     env.mock_all_auths();
     let (c, _, oracle) = setup(&env);
-    let caller = Address::generate(&env);
-
     c.record_impression(&oracle, &1u64, &100i128);
     c.record_click(&oracle, &1u64);
-    c.record_conversion(&caller, &1u64);
+    c.record_conversion(&oracle, &1u64);
 
     let a = c.get_campaign_analytics(&1u64).unwrap();
     assert_eq!(a.total_conversions, 1);
@@ -121,15 +119,13 @@ fn test_record_conversion_calculates_cvr() {
     let env = Env::default();
     env.mock_all_auths();
     let (c, _, oracle) = setup(&env);
-    let caller = Address::generate(&env);
-
     // 4 impressions, 2 clicks, 1 conversion → cvr = 1/2 * 10000 = 5000
     for _ in 0..4 {
         c.record_impression(&oracle, &1u64, &100i128);
     }
     c.record_click(&oracle, &1u64);
     c.record_click(&oracle, &1u64);
-    c.record_conversion(&caller, &1u64);
+    c.record_conversion(&oracle, &1u64);
 
     let a = c.get_campaign_analytics(&1u64).unwrap();
     assert_eq!(a.cvr, 5000);
@@ -155,8 +151,20 @@ fn test_cvr_stays_zero_without_clicks() {
 fn test_record_conversion_without_analytics_panics() {
     let env = Env::default();
     env.mock_all_auths();
-    let (c, _, _) = setup(&env);
+    let (c, _, oracle) = setup(&env);
+
+    c.record_conversion(&oracle, &999u64);
+}
+
+#[test]
+#[should_panic(expected = "only oracle can record analytics")]
+fn test_record_conversion_rejects_non_oracle() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (c, _, oracle) = setup(&env);
     let caller = Address::generate(&env);
 
-    c.record_conversion(&caller, &999u64);
+    c.record_impression(&oracle, &1u64, &100i128);
+    c.record_click(&oracle, &1u64);
+    c.record_conversion(&caller, &1u64);
 }

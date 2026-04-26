@@ -200,7 +200,7 @@ impl AnalyticsAggregatorContract {
         env.storage()
             .instance()
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
-        caller.require_auth();
+        require_oracle(&env, &caller);
 
         let mut analytics: CampaignAnalytics = env
             .storage()
