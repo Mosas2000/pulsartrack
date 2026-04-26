@@ -21,7 +21,7 @@ pub struct RecurringPayment {
     pub recipient: Address,
     pub token: Address,
     pub amount: i128,
-    pub interval_secs: u64, // payment interval
+    pub interval_secs: u64,
     pub max_payments: Option<u32>,
     pub total_payments: u32,
     pub status: RecurringStatus,
@@ -43,6 +43,10 @@ const INSTANCE_LIFETIME_THRESHOLD: u32 = 17_280;
 const INSTANCE_BUMP_AMOUNT: u32 = 86_400;
 const PERSISTENT_LIFETIME_THRESHOLD: u32 = 120_960;
 const PERSISTENT_BUMP_AMOUNT: u32 = 1_051_200;
+
+/// Maximum allowed payment interval: 1 year in seconds.
+/// Prevents u64 overflow when computing `now + interval_secs`.
+const MAX_INTERVAL_SECS: u64 = 365 * 24 * 3_600;
 
 #[contract]
 pub struct RecurringPaymentContract;
@@ -80,8 +84,11 @@ impl RecurringPaymentContract {
         if amount <= 0 {
             panic!("invalid amount");
         }
-        if interval_secs == 0 {
-            panic!("invalid interval");
+
+        // FIX: enforce both lower and upper bounds to prevent u64 overflow
+        // when computing next_payment = now + interval_secs.
+        if interval_secs == 0 || interval_secs > MAX_INTERVAL_SECS {
+            panic!("interval out of valid range");
         }
 
         let counter: u64 = env
@@ -92,6 +99,12 @@ impl RecurringPaymentContract {
         let payment_id = counter + 1;
 
         let now = env.ledger().timestamp();
+
+        // FIX: use checked_add as a runtime safety net against any residual overflow.
+        let next_payment = now
+            .checked_add(interval_secs)
+            .expect("next_payment timestamp overflow");
+
         let recurring = RecurringPayment {
             payment_id,
             payer: payer.clone(),
@@ -104,7 +117,7 @@ impl RecurringPaymentContract {
             status: RecurringStatus::Active,
             created_at: now,
             last_payment: now,
-            next_payment: now + interval_secs,
+            next_payment,
         };
 
         let _ttl_key = DataKey::Payment(payment_id);
@@ -179,14 +192,19 @@ impl RecurringPaymentContract {
 
         recurring.total_payments += 1;
         recurring.last_payment = now;
-        recurring.next_payment = now + recurring.interval_secs;
+
+        // FIX: use checked_add to prevent overflow when advancing the schedule.
+        recurring.next_payment = now
+            .checked_add(recurring.interval_secs)
+            .expect("next_payment timestamp overflow");
 
         let _ttl_key = DataKey::Payment(payment_id);
         env.storage().persistent().set(&_ttl_key, &recurring);
         env.storage().persistent().extend_ttl(
             &_ttl_key,
             PERSISTENT_LIFETIME_THRESHOLD,
-            PERSISTENT_BUMP_AMOUNT);
+            PERSISTENT_BUMP_AMOUNT,
+        );
 
         env.events().publish(
             (symbol_short!("recurring"), symbol_short!("paid")),
@@ -237,7 +255,14 @@ impl RecurringPaymentContract {
         }
 
         recurring.status = RecurringStatus::Active;
-        recurring.next_payment = env.ledger().timestamp() + recurring.interval_secs;
+
+        // FIX: use checked_add to prevent overflow when resuming the schedule.
+        recurring.next_payment = env
+            .ledger()
+            .timestamp()
+            .checked_add(recurring.interval_secs)
+            .expect("next_payment timestamp overflow");
+
         let _ttl_key = DataKey::Payment(payment_id);
         env.storage().persistent().set(&_ttl_key, &recurring);
         env.storage().persistent().extend_ttl(

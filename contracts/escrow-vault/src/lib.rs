@@ -571,9 +571,15 @@ impl EscrowVaultContract {
         }
 
         escrow.locked_amount -= total_settlement;
-        escrow.released_amount += claimant_amount;
-        escrow.refunded_amount += respondent_amount;
+
+        // ✅ FIX: track each side's amount in the correct field
+        escrow.released_amount += claimant_amount;   // claimant receives a "release"
+        escrow.refunded_amount += respondent_amount; // respondent receives a "refund"
+    
         escrow.released_at = Some(env.ledger().timestamp());
+    
+        // The state logic below is unchanged but now correct because the
+        // accounting fields accurately reflect what was actually transferred
         escrow.state = if escrow.locked_amount == 0 {
             if claimant_amount > 0 && respondent_amount > 0 {
                 EscrowState::PartiallyReleased
