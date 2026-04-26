@@ -220,6 +220,14 @@ impl PerformanceOracleContract {
     }
 
     fn _try_build_consensus(env: &Env, campaign_id: u64, total_attesters: u32) {
+        if env
+            .storage()
+            .persistent()
+            .has(&DataKey::Consensus(campaign_id))
+        {
+            return;
+        }
+
         let min_attesters: u32 = env
             .storage()
             .instance()
