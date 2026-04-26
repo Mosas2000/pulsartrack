@@ -67,6 +67,40 @@ fn test_create_listing() {
 }
 
 #[test]
+#[should_panic(expected = "listing price must be positive")]
+fn test_create_listing_rejects_zero_price() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (c, _, _, _) = setup(&env);
+    let creator = Address::generate(&env);
+    c.create_listing(
+        &creator,
+        &s(&env, "QmZeroPrice"),
+        &s(&env, "Free Banner"),
+        &s(&env, "Should fail"),
+        &0i128,
+        &LicenseType::OneTime,
+    );
+}
+
+#[test]
+#[should_panic(expected = "listing price must be positive")]
+fn test_create_listing_rejects_negative_price() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (c, _, _, _) = setup(&env);
+    let creator = Address::generate(&env);
+    c.create_listing(
+        &creator,
+        &s(&env, "QmNegativePrice"),
+        &s(&env, "Negative Banner"),
+        &s(&env, "Should fail"),
+        &-1i128,
+        &LicenseType::OneTime,
+    );
+}
+
+#[test]
 fn test_purchase_license() {
     let env = Env::default();
     env.mock_all_auths();

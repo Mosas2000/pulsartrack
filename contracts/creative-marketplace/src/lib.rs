@@ -107,7 +107,7 @@ impl CreativeMarketplaceContract {
         creator.require_auth();
 
         if price <= 0 {
-            panic!("invalid price");
+            panic!("listing price must be positive");
         }
 
         // Check for duplicate content hash with exclusive license
