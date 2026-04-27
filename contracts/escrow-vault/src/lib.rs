@@ -201,6 +201,9 @@ impl EscrowVaultContract {
         if performance_threshold > 100 {
             panic!("invalid performance threshold");
         }
+        if expires_in <= time_lock_duration {
+            panic!("expires_in must be greater than time_lock_duration");
+        }
 
         let min_threshold: u32 = env
             .storage()
@@ -469,6 +472,10 @@ impl EscrowVaultContract {
         let now = env.ledger().timestamp();
         if now < escrow.expires_at {
             panic!("escrow not yet expired");
+        }
+
+        if escrow.state == EscrowState::Disputed {
+            panic!("escrow is disputed");
         }
 
         if escrow.locked_amount <= 0 {
