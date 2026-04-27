@@ -274,7 +274,43 @@ impl AuctionEngineContract {
             panic!("auction still running");
         }
 
-        auction.status = if let Some(winning) = auction.winning_bid {
+        if auction.status == AuctionStatus::Settled || auction.status == AuctionStatus::Cancelled {
+            panic!("auction already settled or cancelled");
+        }
+
+        let winning = auction.winning_bid;
+        let winner = auction.winner.clone();
+
+        // 1. Effects: Update state and storage first
+        auction.status = if let Some(amount) = winning {
+            if amount >= auction.reserve_price {
+                AuctionStatus::Settled
+            } else {
+                AuctionStatus::Cancelled
+            }
+        } else {
+            AuctionStatus::Cancelled
+        };
+
+        // Clear winner and winning bid to prevent double-settlement on retry
+        auction.winner = None;
+        auction.winning_bid = None;
+
+        // Persist the updated state
+        let _ttl_key = DataKey::Auction(auction_id);
+        env.storage().persistent().set(&_ttl_key, &auction);
+        env.storage().persistent().extend_ttl(
+            &_ttl_key,
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+        // Remove highest bid key
+        env.storage()
+            .persistent()
+            .remove(&DataKey::HighestBid(auction_id));
+
+        // 2. Interactions: Transfer funds based on finalized status
+        if let Some(amount) = winning {
             let token_addr: Address = env
                 .storage()
                 .instance()
@@ -282,33 +318,14 @@ impl AuctionEngineContract {
                 .unwrap();
             let token_client = token::Client::new(&env, &token_addr);
 
-            if winning >= auction.reserve_price {
-                // Transfer payment from contract to publisher
-                token_client.transfer(
-                    &env.current_contract_address(),
-                    &auction.publisher,
-                    &winning,
-                );
-                AuctionStatus::Settled
-            } else {
-                // Refund the highest bidder because reserve not met
-                if let Some(winner) = &auction.winner {
-                    token_client.transfer(&env.current_contract_address(), winner, &winning);
-                    env.storage()
-                        .persistent()
-                        .remove(&DataKey::BidderBid(auction_id, winner.clone()));
-                }
-                AuctionStatus::Cancelled
-            }
-        } else {
-            AuctionStatus::Cancelled
-        };
-
-        if auction.status == AuctionStatus::Settled {
-            if let Some(winner) = &auction.winner {
+            if auction.status == AuctionStatus::Settled {
+                token_client.transfer(&env.current_contract_address(), &auction.publisher, &amount);
+            } else if let Some(voter_addr) = winner {
+                // Refund because reserve price was not met
+                token_client.transfer(&env.current_contract_address(), &voter_addr, &amount);
                 env.storage()
                     .persistent()
-                    .remove(&DataKey::BidderBid(auction_id, winner.clone()));
+                    .remove(&DataKey::BidderBid(auction_id, voter_addr));
             }
         }
 

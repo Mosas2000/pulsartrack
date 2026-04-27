@@ -146,6 +146,10 @@ impl WrappedTokenContract {
             panic!("source transaction already processed");
         }
 
+        if amount <= 0 {
+            panic!("amount must be positive");
+        }
+
         let mut wrapped: WrappedToken = env
             .storage()
             .persistent()
@@ -161,14 +165,18 @@ impl WrappedTokenContract {
         // For now, we track the internal balance
         let key = DataKey::UserBalance(symbol.clone(), recipient.clone());
         let current: i128 = env.storage().persistent().get(&key).unwrap_or(0);
-        env.storage().persistent().set(&key, &(current + amount));
+        let new_balance = current.checked_add(amount).expect("balance overflow");
+        env.storage().persistent().set(&key, &new_balance);
         env.storage().persistent().extend_ttl(
             &key,
             PERSISTENT_LIFETIME_THRESHOLD,
             PERSISTENT_BUMP_AMOUNT,
         );
 
-        wrapped.total_wrapped += amount;
+        wrapped.total_wrapped = wrapped
+            .total_wrapped
+            .checked_add(amount)
+            .expect("total_wrapped overflow");
         let _ttl_key = DataKey::WrappedToken(symbol.clone());
         env.storage().persistent().set(&_ttl_key, &wrapped);
         env.storage().persistent().extend_ttl(
@@ -232,14 +240,15 @@ impl WrappedTokenContract {
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         user.require_auth();
 
+        if amount <= 0 {
+            panic!("amount must be positive");
+        }
+
         let key = DataKey::UserBalance(symbol.clone(), user.clone());
         let current: i128 = env.storage().persistent().get(&key).unwrap_or(0);
 
-        if current < amount {
-            panic!("insufficient balance");
-        }
-
-        env.storage().persistent().set(&key, &(current - amount));
+        let new_balance = current.checked_sub(amount).expect("insufficient balance");
+        env.storage().persistent().set(&key, &new_balance);
         env.storage().persistent().extend_ttl(
             &key,
             PERSISTENT_LIFETIME_THRESHOLD,
@@ -252,7 +261,10 @@ impl WrappedTokenContract {
             .get(&DataKey::WrappedToken(symbol.clone()))
             .expect("token not registered");
 
-        wrapped.total_wrapped -= amount;
+        wrapped.total_wrapped = wrapped
+            .total_wrapped
+            .checked_sub(amount)
+            .expect("total_wrapped underflow");
         let _ttl_key = DataKey::WrappedToken(symbol);
         env.storage().persistent().set(&_ttl_key, &wrapped);
         env.storage().persistent().extend_ttl(
