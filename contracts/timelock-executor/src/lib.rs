@@ -3,7 +3,8 @@
 
 #![no_std]
 use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short, Address, Env, String, Symbol, Val, Vec,
+    contract, contractimpl, contracttype, symbol_short, xdr::ToXdr, Address, Bytes, BytesN, Env,
+    String, Symbol, Val, Vec,
 };
 
 #[contracttype]
@@ -42,6 +43,7 @@ pub enum DataKey {
     GracePeriod,
     EntryCounter,
     Entry(u64),
+    OperationHash(BytesN<32>),
 }
 
 const INSTANCE_LIFETIME_THRESHOLD: u32 = 17_280;
@@ -118,6 +120,22 @@ impl TimelockExecutorContract {
             panic!("invalid delay");
         }
 
+        let mut op_bytes = Bytes::new(&env);
+        op_bytes.append(&target_contract.clone().to_xdr(&env));
+        op_bytes.append(&function_name.clone().to_xdr(&env));
+        for arg in args.iter() {
+            op_bytes.append(&arg.to_xdr(&env));
+        }
+        let op_hash: BytesN<32> = env.crypto().sha256(&op_bytes).into();
+
+        if env
+            .storage()
+            .persistent()
+            .has(&DataKey::OperationHash(op_hash.clone()))
+        {
+            panic!("operation already queued");
+        }
+
         let counter: u64 = env
             .storage()
             .instance()
@@ -128,7 +146,6 @@ impl TimelockExecutorContract {
         let now = env.ledger().timestamp();
         let grace: u64 = env.storage().instance().get(&DataKey::GracePeriod).unwrap();
 
-        // Validate that eta + grace_period won't overflow
         let eta = now
             .checked_add(delay_secs)
             .expect("eta calculation overflows u64");
@@ -160,6 +177,10 @@ impl TimelockExecutorContract {
         env.storage()
             .instance()
             .set(&DataKey::EntryCounter, &entry_id);
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::OperationHash(op_hash), &entry_id);
 
         env.events().publish(
             (symbol_short!("timelock"), symbol_short!("queued")),
