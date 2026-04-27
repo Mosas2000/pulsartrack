@@ -79,6 +79,7 @@ pub enum DataKey {
     Proposal(u64),
     Vote(u64, Address),
     HasVoted(u64, Address),
+    LockedTokens(u64, Address), // proposal_id, voter
 }
 
 // ============================================================
@@ -269,6 +270,18 @@ impl GovernanceDaoContract {
             panic!("invalid voting power");
         }
 
+        // Lock tokens: Transfer from voter to the DAO contract
+        token_client.transfer(&voter, &env.current_contract_address(), &power);
+
+        // Record locked tokens
+        let _ttl_key = DataKey::LockedTokens(proposal_id, voter.clone());
+        env.storage().persistent().set(&_ttl_key, &power);
+        env.storage().persistent().extend_ttl(
+            &_ttl_key,
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+
         // Record vote
         match choice {
             VoteChoice::For => proposal.votes_for += power,
@@ -410,6 +423,50 @@ impl GovernanceDaoContract {
         // Any execution side effects (e.g. calling proposal.target_contract)
         // must be placed here — after the status has been committed — so they
         // cannot be replayed if they succeed but the status write were to fail.
+    }
+
+    /// Unlock tokens after proposal is finalized
+    pub fn unlock_tokens(env: Env, voter: Address, proposal_id: u64) {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        voter.require_auth();
+
+        let proposal: Proposal = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Proposal(proposal_id))
+            .expect("proposal not found");
+
+        // Can only unlock if the proposal is no longer Active
+        if proposal.status == ProposalStatus::Active
+            && env.ledger().sequence() <= proposal.end_ledger
+        {
+            panic!("proposal still active");
+        }
+
+        let key = DataKey::LockedTokens(proposal_id, voter.clone());
+        let amount: i128 = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .expect("no tokens locked for this proposal");
+
+        // Remove record before transfer (CEI)
+        env.storage().persistent().remove(&key);
+
+        let gov_token: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::GovernanceToken)
+            .unwrap();
+        let token_client = token::Client::new(&env, &gov_token);
+        token_client.transfer(&env.current_contract_address(), &voter, &amount);
+
+        env.events().publish(
+            (symbol_short!("gov"), symbol_short!("unlocked")),
+            (proposal_id, voter, amount),
+        );
     }
 
     /// Cancel a proposal (proposer or admin)
