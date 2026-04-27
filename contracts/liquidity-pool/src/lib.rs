@@ -228,6 +228,10 @@ impl LiquidityPoolContract {
             panic!("insufficient liquidity");
         }
 
+        if duration_secs == 0 {
+            panic!("duration_secs must be greater than zero");
+        }
+
         if env
             .storage()
             .persistent()
