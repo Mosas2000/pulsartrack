@@ -158,6 +158,11 @@ impl PayoutAutomationContract {
                     last_payout: 0,
                 });
 
+        earnings.pending_amount = earnings
+            .pending_amount
+            .checked_add(amount)
+            .expect("pending_amount overflow");
+
         env.storage().persistent().set(&key, &earnings);
         env.storage().persistent().extend_ttl(
             &key,
