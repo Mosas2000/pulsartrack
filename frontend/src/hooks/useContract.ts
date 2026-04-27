@@ -466,6 +466,8 @@ export function useCreateProposal() {
   const { mutateAsync, ...rest } = useContractCall();
   const { address } = useWalletStore();
 
+  const LEDGERS_PER_DAY = 17_280;
+
   const createProposal = async (params: {
     title: string;
     description: string;
@@ -480,7 +482,7 @@ export function useCreateProposal() {
         addressToScVal(address),
         stringToScVal(params.title),
         stringToScVal(params.description),
-        u64ToScVal(params.votingPeriodDays * 86400),
+        u64ToScVal(params.votingPeriodDays * LEDGERS_PER_DAY),
       ],
     });
   };
