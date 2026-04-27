@@ -42,6 +42,9 @@ members = [
   "contracts/anomaly-detector",
   "contracts/common-admin",
   "contracts/vesting-schedule",
+  "contracts/access-control",
+  "contracts/treasury-manager",
+  "contracts/whitelist-registry",
 ]
 
 [workspace.dependencies]
