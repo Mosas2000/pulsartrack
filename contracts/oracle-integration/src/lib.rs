@@ -113,6 +113,13 @@ impl OracleIntegrationContract {
         oracle.require_auth();
         Self::_require_oracle(&env, &oracle);
 
+        if price_usd <= 0 {
+            panic!("price must be positive");
+        }
+        if confidence == 0 || confidence > 100 {
+            panic!("confidence must be 1-100");
+        }
+
         let feed = PriceFeed {
             asset: asset.clone(),
             price_usd,
