@@ -67,6 +67,7 @@ const INSTANCE_LIFETIME_THRESHOLD: u32 = 17_280;
 const INSTANCE_BUMP_AMOUNT: u32 = 86_400;
 const PERSISTENT_LIFETIME_THRESHOLD: u32 = 34_560;
 const PERSISTENT_BUMP_AMOUNT: u32 = 259_200;
+const MAX_BASELINE_MULTIPLIER: u64 = 3; // Max 3x increase per update
 
 #[contract]
 pub struct AnomalyDetectorContract;
@@ -122,6 +123,54 @@ impl AnomalyDetectorContract {
 
         let _ttl_key = DataKey::Baseline(campaign_id);
         env.storage().persistent().set(&_ttl_key, &baseline);
+        env.storage().persistent().extend_ttl(
+            &_ttl_key,
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+    }
+
+    pub fn update_baseline(env: Env, admin: Address, campaign_id: u64, new_impressions: u64, new_clicks: u64) {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        admin.require_auth();
+        let stored_admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
+        if admin != stored_admin {
+            panic!("unauthorized");
+        }
+
+        let _ttl_key = DataKey::Baseline(campaign_id);
+        let current: Option<TrafficBaseline> = env.storage().persistent().get(&_ttl_key);
+
+        if let Some(baseline) = current {
+            let max_impressions = baseline
+                .avg_impressions_per_hour
+                .saturating_mul(MAX_BASELINE_MULTIPLIER);
+            let max_clicks = baseline.avg_clicks_per_hour.saturating_mul(MAX_BASELINE_MULTIPLIER);
+
+            if new_impressions > max_impressions {
+                panic!("baseline change too large");
+            }
+            if new_clicks > max_clicks {
+                panic!("baseline change too large");
+            }
+
+            env.events().publish(
+                (symbol_short!("baseline"), symbol_short!("updated")),
+                (campaign_id, baseline.avg_impressions_per_hour, new_impressions),
+            );
+        }
+
+        let new_baseline = TrafficBaseline {
+            campaign_id,
+            avg_impressions_per_hour: new_impressions,
+            avg_clicks_per_hour: new_clicks,
+            spike_threshold_pct: 300,
+            last_updated: env.ledger().timestamp(),
+        };
+
+        env.storage().persistent().set(&_ttl_key, &new_baseline);
         env.storage().persistent().extend_ttl(
             &_ttl_key,
             PERSISTENT_LIFETIME_THRESHOLD,
