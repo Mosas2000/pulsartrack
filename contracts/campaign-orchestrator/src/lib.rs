@@ -4,8 +4,69 @@
 #![no_std]
 use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short, token, Address, Env, IntoVal, String,
-    Symbol, Val, Vec as SdkVec,
+    Symbol, TryFromVal, Val, Vec as SdkVec,
 };
+
+#[contracttype]
+#[derive(Clone, PartialEq)]
+pub enum LifecycleState {
+    Draft,
+    PendingReview,
+    Active,
+    Paused,
+    Completed,
+    Cancelled,
+    Expired,
+    Archived,
+    Rejected,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct CampaignLifecycle {
+    pub campaign_id: u64,
+    pub advertiser: Address,
+    pub state: LifecycleState,
+    pub created_at: u64,
+    pub activated_at: Option<u64>,
+    pub paused_at: Option<u64>,
+    pub completed_at: Option<u64>,
+    pub cancelled_at: Option<u64>,
+    pub pause_count: u32,
+    pub extension_count: u32,
+    pub original_end_ledger: u32,
+    pub current_end_ledger: u32,
+}
+
+#[contracttype]
+#[derive(Clone, PartialEq)]
+pub enum EscrowState {
+    Pending,
+    Locked,
+    Released,
+    Refunded,
+    PartiallyReleased,
+    Disputed,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct Escrow {
+    pub campaign_id: u64,
+    pub depositor: Address,
+    pub beneficiary: Address,
+    pub amount: i128,
+    pub locked_amount: i128,
+    pub released_amount: i128,
+    pub refunded_amount: i128,
+    pub state: EscrowState,
+    pub time_lock_until: u64,
+    pub performance_threshold: u32,
+    pub created_at: u64,
+    pub locked_at: Option<u64>,
+    pub released_at: Option<u64>,
+    pub expires_at: u64,
+}
 
 // Define external contract interfaces for cross-contract calls
 // These match the actual contract implementations
@@ -743,19 +804,20 @@ impl CampaignOrchestratorContract {
             .instance()
             .get::<DataKey, Address>(&DataKey::LifecycleContract)
         {
-            // Call get_lifecycle on the lifecycle contract
-            let lifecycle_result: Option<Val> = env.invoke_contract(
+            let lifecycle_result: Option<CampaignLifecycle> = env.invoke_contract(
                 &lifecycle_addr,
                 &Symbol::new(env, "get_lifecycle"),
                 SdkVec::from_array(env, [campaign_id.into_val(env)]),
             );
 
-            if lifecycle_result.is_none() {
-                panic!("campaign not found in lifecycle contract");
+            match lifecycle_result {
+                Some(lifecycle) => {
+                    if lifecycle.state != LifecycleState::Active {
+                        panic!("campaign is not active");
+                    }
+                }
+                None => panic!("campaign not found in lifecycle contract"),
             }
-
-            // Note: In production, you would deserialize the result and check the state
-            // For now, we're validating that the campaign exists in the lifecycle contract
         }
 
         // 2. Validate escrow has sufficient budget
@@ -764,15 +826,20 @@ impl CampaignOrchestratorContract {
             .instance()
             .get::<DataKey, Address>(&DataKey::EscrowContract)
         {
-            // Call get_escrow on the escrow contract
-            let escrow_result: Option<Val> = env.invoke_contract(
+            let escrow_result: Option<Escrow> = env.invoke_contract(
                 &escrow_addr,
                 &Symbol::new(env, "get_escrow"),
                 SdkVec::from_array(env, [campaign_id.into_val(env)]),
             );
 
-            // If escrow exists, validate it can be released (has budget)
-            if escrow_result.is_some() {
+            if let Some(escrow) = escrow_result {
+                if escrow.state != EscrowState::Locked && escrow.state != EscrowState::Pending {
+                    panic!("escrow is not in a valid state");
+                }
+                if escrow.amount <= escrow.released_amount + escrow.refunded_amount {
+                    panic!("escrow has insufficient remaining funds");
+                }
+
                 let can_release: bool = env.invoke_contract(
                     &escrow_addr,
                     &Symbol::new(env, "can_release"),
@@ -791,27 +858,20 @@ impl CampaignOrchestratorContract {
             .instance()
             .get::<DataKey, Address>(&DataKey::TargetingContract)
         {
-            // Call get_targeting to check if targeting config exists
             let targeting_result: Option<Val> = env.invoke_contract(
                 &targeting_addr,
                 &Symbol::new(env, "get_targeting"),
                 SdkVec::from_array(env, [campaign_id.into_val(env)]),
             );
 
-            // If targeting config exists, check publisher score
             if targeting_result.is_some() {
-                // Try to get the targeting score for this publisher
                 let score_result: Option<Val> = env.invoke_contract(
                     &targeting_addr,
                     &Symbol::new(env, "get_score"),
                     SdkVec::from_array(env, [campaign_id.into_val(env), publisher.into_val(env)]),
                 );
 
-                // If no score exists and targeting is configured, publisher may not be eligible
                 if score_result.is_none() {
-                    // In production, you might want to compute the score on-the-fly
-                    // or have a more lenient policy
-                    // For now, we'll allow it but log a warning via events
                     env.events().publish(
                         (symbol_short!("warning"), symbol_short!("no_score")),
                         (campaign_id, publisher.clone()),
