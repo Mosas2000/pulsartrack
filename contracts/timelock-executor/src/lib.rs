@@ -194,6 +194,12 @@ impl TimelockExecutorContract {
             panic!("entry not queued");
         }
 
+        // Re-validate proposer is still authorized
+        let current_admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
+        if entry.proposer != current_admin {
+            panic!("proposer no longer authorized");
+        }
+
         let now = env.ledger().timestamp();
 
         if now < entry.eta {

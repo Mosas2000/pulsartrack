@@ -165,7 +165,8 @@ impl RewardsDistributorContract {
         // Update user rewards with vesting schedule
         let key = DataKey::UserRewards(recipient.clone());
         let now = env.ledger().timestamp();
-        let vesting_duration = 365 * 24 * 3600; // 365 days in seconds
+        let ledger_duration = program.end_ledger - program.start_ledger;
+        let vesting_duration = ledger_duration * 5; // ~5 seconds per ledger
         let mut rewards: UserRewards =
             env.storage().persistent().get(&key).unwrap_or(UserRewards {
                 user: recipient.clone(),
@@ -184,6 +185,7 @@ impl RewardsDistributorContract {
         }
 
         rewards.total_earned += amount;
+        rewards.pending += amount;
         rewards.last_earned = now;
         env.storage().persistent().set(&key, &rewards);
         env.storage().persistent().extend_ttl(
@@ -225,6 +227,7 @@ impl RewardsDistributorContract {
 
         // --- CEI: Effects before Interactions ---
         rewards.total_claimed += claimable;
+        rewards.pending = rewards.pending.saturating_sub(claimable);
         env.storage().persistent().set(&key, &rewards);
         env.storage().persistent().extend_ttl(
             &key,
